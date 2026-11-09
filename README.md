@@ -58,3 +58,7 @@ Save your community to a file whenever you like. You can open it later, scroll b
 - **Changes:** see `CHANGELOG.md` for what changed in each version.
 
 Everyone in a generated community is invented.
+
+## Licence
+
+Town Chronicle is released under the MIT Licence. You're free to use, change and share it, as long as you keep the copyright notice. See `LICENSE`.
