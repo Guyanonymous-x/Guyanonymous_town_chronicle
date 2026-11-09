@@ -203,6 +203,7 @@ function advanceYear(W) {
   for (let s = 0; s < 4; s++) {
     setSeason(W, s);
     runPlans(W, rng, y, s, R);
+    if (typeof makerLockedDeaths === 'function') makerLockedDeaths(W, rng, y, s, R);
     econSeason(W, rng, y, s, R, Y);
     seasonHealth(W, rng, y, s, R, outbreak);
     seasonBirths(W, rng, y, s, R);
@@ -368,6 +369,7 @@ function blameFor(W, rng, culprit, victim, y, what, fatal) {
 }
 function die(W, rng, p, y, cause, kind, R, outbreak) {
   if (!isAlive(p)) return;
+  if (p.lockedDeath && y < p.lockedDeath.y) return; // a locked death year: nothing kills them before it
   killPerson(W, rng, p, y, cause, outbreak ? `During the ${outbreak.d.name} outbreak.` : null, kind);
   R.deaths++; R.causes[cause] = (R.causes[cause] || 0) + 1;
   if (ageOf(p, y) <= 1) R.infantDeaths++;

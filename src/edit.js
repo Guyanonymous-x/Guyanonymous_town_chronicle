@@ -94,6 +94,7 @@ function planCheck(W, pl) {
   const P = id => livingResident(W, id);
   if (PLAN_KINDS[pl.kind] && PLAN_KINDS[pl.kind].who === 'person' && !P(pl.who)) return 'Pick someone alive and living here.';
   const p = P(pl.who), t = P(pl.target);
+  if (pl.kind === 'die' && p && p.lockedDeath) return `Their death year is locked at ${p.lockedDeath.y}. Unlock it first (on this Edit & plan tab).`;
   switch (pl.kind) {
     case 'marry': {
       if (!t) return 'Pick who they marry (alive and living here).';
@@ -129,6 +130,7 @@ function planCheck(W, pl) {
     case 'outbreak': if (!diseasesFor(W).some(d => d.id === pl.disease)) return 'Pick an illness.'; return null;
     case 'weather': { const table = W.era === 'scifi' ? WEATHER.scifi : WEATHER.land; if (!(pl.s >= 0 && pl.s <= 3) || !table[pl.s].some(w => w[0] === pl.weather) && pl.weather !== 'perfect') return 'Pick weather for that season.'; return null; }
     case 'blight': if (!(PESTS[W.era] || []).some(x => x[1] === pl.pest)) return 'Pick a blight.'; return null;
+    case 'madePerson': return typeof makerPlanCheck === 'function' ? makerPlanCheck(W, pl) : 'The person maker is not loaded.'; // made on the Make a person page, not listed in PLAN_KINDS
     case 'newcomers': if (!(+pl.n >= 1 && +pl.n <= 30)) return 'Choose 1 to 30 households.'; if (W.era === 'dropped') return 'No other people exist in this world.'; return null;
     case 'feud': { const A = W.households[pl.a], B = W.households[pl.b]; if (!A || !B || A === B) return 'Pick two different households.'; if (!A.members.some(id => livingResident(W, id)) || !B.members.some(id => livingResident(W, id))) return 'Both households must be living here.'; return null; }
     case 'endFeud': { const f = W.feuds[pl.feud]; if (!f || f.status !== 'active') return 'Pick a feud that is still going.'; return null; }
@@ -174,6 +176,7 @@ function planText(W, pl) {
     case 'outbreak': return `an outbreak of ${(DISEASES.find(d => d.id === pl.disease) || {}).name}`;
     case 'weather': return `${SEASONS[pl.s].toLowerCase()} weather: ${pl.weather}`;
     case 'blight': return pl.pest;
+    case 'madePerson': return makerPlanText(W, pl);
     case 'newcomers': return `${pl.n} new households arrive`;
     case 'feud': return `a feud between ${(W.households[pl.a] || {}).name} and ${(W.households[pl.b] || {}).name}${pl.reason ? ' over ' + pl.reason : ''}`;
     case 'endFeud': { const f = W.feuds[pl.feud]; return `the feud between ${f ? f.sideA.name + ' and ' + f.sideB.name : '?'} ends`; }
@@ -297,6 +300,7 @@ function doPlan(W, rng, y, s, R, pl) {
       addEvent(W, p, y, 'office', `Became ${o.title.toLowerCase()}${pl.reason ? ': ' + pl.reason : ''}.`); W.log.push({ y, s, t: 'office', text: `@${p.id} became ${o.title.toLowerCase()}.` }); R.items.push({ k: 'office', text: `@${p.id} became ${o.title.toLowerCase()}.` });
       return `${p.first} became ${o.title.toLowerCase()}.`;
     }
+    case 'madePerson': return makerMoveIn(W, rng, y, s, R, pl);
     case 'newcomers': {
       let n = 0; for (let i = 0; i < +pl.n; i++) { const u = makeImmigrantUnit(W, rng, y, rng.chance(0.6) ? 'family' : 'single', 16, 50); for (const q of u) { mindOf(q); q.skills = {}; for (const k of Object.keys(q.aptitude)) q.skills[k] = Math.round(q.aptitude[k] * 0.35 + Math.min(20, ageOf(q, y) - 10)); q.hist = []; if (pl.reason) { const ev = q.events.filter(e => e.t === 'arrived').pop(); if (ev) ev.why = pl.reason; } } assignNewcomerJobs(W, rng, u, y, R); n += u.length; R.arrivals += u.length; }
       W.log.push({ y, s, t: 'arrivals', text: `${n} newcomers arrived together${pl.reason ? ': ' + pl.reason : ''}.` }); return `${n} people arrived.`;

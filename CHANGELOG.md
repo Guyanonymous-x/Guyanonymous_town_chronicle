@@ -1,5 +1,67 @@
 # Town Chronicle — Changelog
 
+## V9 — Stage 7: Make a person (LifeWeaver's person maker joins the app) (2026-11-09)
+
+**New: Make a person page** (in the menu, after Storyteller)
+
+- **Design someone yourself.** This is LifeWeaver's person maker, now part of Town Chronicle.
+  - Fill in anything you already know: a name, looks, personality, family, schooling, jobs, turning points or your own events. Whatever you type is locked 🔒.
+  - **✨ Generate** makes up everything that is not locked, to fit the town, its setting and its year.
+  - Lock all, unlock all, clear unlocked, rewrite the story, add or remove rows (with undo), and start a new blank person.
+  - A timeline and a life story are built from the details, and anything that doesn't fit is listed.
+  - The person you're making is kept in the save file.
+  - For now: medieval, modern, fantasy and sci-fi towns. Frontier and dropped towns come later.
+- **Move them in.** Their arrival goes on the plan for the coming year, in the season you choose, and can be cancelled on the Storyteller page.
+  - **Who comes:** their current partner (married or living together) and their living children. Children under 18 always come. Older children come 15% of the time, as with other newcomer families; the rest are recorded as having stayed behind.
+  - **Asked when needed:** if a partner's or child's sex can't be told from the name, you're asked to choose.
+  - **What carries over:**
+    - name, sex and year born
+    - height, build, hair and eyes
+    - quirks, fears, hopes, likes and values
+    - schooling
+    - their whole life before arriving, as life events
+  - **Personality words** (such as shy, kind or anxious) move the matching personality score by 15 points each. Words the app doesn't know are kept as a note.
+  - **Reading and writing:** in medieval and fantasy towns, a made person can read and write if they had any schooling other than only an apprenticeship.
+  - **Work:** if the town has their job and there's an opening, they take it. Otherwise they look for work like any newcomer.
+  - **Surnames:** married women may take their husband's name, and children take their father's surname, by the town's own rules, unless you typed and locked the name.
+- **A locked death year stays locked.** Nothing in the town can kill them before that year, and they die in that year.
+  - A planned death for them is refused while it is locked.
+  - Their **Edit & plan** tab shows the lock, with an **Unlock** button. Unlocking lets the town decide, like for anyone else.
+- **Before coming to the town:** a made person's page has a box with what LifeWeaver knew.
+  - notable features, dreams, biggest regret and personality words
+  - where they were born and lived, and their work before
+  - turning points and their own events
+  - their full life story from before
+  - The same details are in their printed life story, in a new **Made people** Excel sheet, and in their family-tree file notes.
+
+**Also fixed**
+- **Murder records:** a murder record no longer says the victim died when they didn't.
+- **Relatives dying in the future:** LifeWeaver could give a relative a death year in the future (about 1 in 9,000 people). Made people's relatives are left alive instead, for the town to decide.
+
+**Checked**
+- **Person maker:** 1,200 people made in medieval, modern, fantasy and sci-fi towns.
+  - All of them were alive and the right age on arrival.
+  - Locked details never changed, and the same random numbers always made the same person: 0 problems.
+- **Moving in:** 160 made people moved into towns in four settings, with partners and children, and each town then ran forward 36 years.
+  - **Family:** 76 partners and 140 children made. 113 children came and 27 stayed behind. No child under 18 stayed behind.
+  - **Records:** 2,837 earlier-life events carried over, and every reading and writing decision followed their schooling: 0 problems.
+  - **Locked deaths:** all 32 people whose locked year came died in exactly that year, and none earlier.
+  - **Refusals:** all 40 planned deaths for locked people were refused.
+  - **Unlocking:** worked for all 8 tried.
+  - **Asking:** all 16 cases needing a partner's or child's sex were asked.
+  - **Town records:** 0 problems.
+- **Exports with made people,** read back:
+  - **Family-tree files:** 5,462 people, with names, life notes and parents all matching.
+  - **Excel:** 1,706,322 cells, with 0 differences.
+- **In the app (Chrome):**
+  - The page was tried in all six settings: 84 people generated, every tab and button working.
+  - A woman moved in with her family, was unlocked and re-locked with undo, and died in her locked year.
+  - Errors: 0.
+- **Earlier checks, all rerun on all six settings, with the same results as V8:**
+  - 39,784 person family trees and 2,178 whole-family trees: 0 problems
+  - 11,883 people in family-tree files and 2,242,031 Excel cells read back: 0 differences
+  - 50-year runs, editing and plans, person, household, tree and map pages, exports, printing, pictures, saves and reopening: 0 errors
+
 ## V8 — Stage 6: exports, printing, pictures and smaller saves (2026-11-07)
 
 **New: Exports & printing page** (in the menu, after Storyteller)

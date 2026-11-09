@@ -76,7 +76,7 @@ function renderNav() {
   const map = { person: 'people', household: 'households', group: 'groups', workplace: 'work' };
   const on = map[cur] || cur;
   $('#nav').innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === on ? 'on' : ''}">${l}</button>`).join('') +
-    `<div class="sep"></div><div class="note">V8: adds exports — family-tree files, Excel, printing and PDF, pictures, smaller saves.</div>`;
+    `<div class="sep"></div><div class="note">V9: adds Make a person — design someone (LifeWeaver’s person maker), lock what you want, and move them in with their family.</div>`;
   $('#nav').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (b.dataset.nav === 'people') { ui.peopleFilter = {}; ui.peoplePage = 0; } if (b.dataset.nav === 'households') ui.hhMeans = null; nav.stack = []; nav.cur = null; go(b.dataset.nav); });
 }
 function render() {
@@ -89,7 +89,7 @@ function render() {
   const crumbs = nav.stack.length ? `<div class="crumbs"><button class="small" id="bBack">← Back</button></div>` : '';
   let html = '';
   try {
-    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings })[v](p);
+    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings, maker: viewMaker })[v](p);
   } catch (err) { console.error(err); html = `<div class="card err">Something went wrong showing this page: ${esc(err.message)}</div>`; }
   $('#main').innerHTML = crumbs + html;
   if ($('#bBack')) $('#bBack').onclick = back;

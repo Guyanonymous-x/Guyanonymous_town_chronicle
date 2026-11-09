@@ -100,7 +100,7 @@ function exportGedcom(W, opts) {
     if (opts.notes !== false) {
       const life = (p.events || []).filter(e => !e.secret || opts.secrets).map(e => `${e.y}${e.s != null ? ' ' + XSEASONS[e.s] : ''}: ${plainText(W, e.text)}${e.why ? ' (' + plainText(W, e.why) + ')' : ''}`);
       const head = [`${xStatus(W, p)}.`, p.notes ? `Notes: ${p.notes}` : ''].filter(Boolean).join(' ');
-      add(1, 'NOTE', [head, ...life].join('\n'));
+      add(1, 'NOTE', [head, ...life, ...(p.made && typeof makerDetailText === 'function' ? ['', makerDetailText(W, p)] : [])].join('\n'));
     }
   }
   for (const f of fams) {
@@ -238,6 +238,7 @@ function workbookSheets(W, opts) {
     S.push({ name: 'Economy', rows: [['Year', 'Weather', 'Food %', 'Prices %', 'Economy %', 'Famine', 'Pests and blights', 'Hit hardest', 'Good year for', ...goods.map(g => g + ' yield %')],
       ...ey.map(y => { const e = W.econ.history[y]; return [y, (e.weather || []).join('; '), e.food != null ? Math.round(e.food * 100) : '', e.price != null ? Math.round(e.price * 100) : '', e.economy != null ? Math.round(e.economy * 100) : '', e.famine ? 'Yes' : '', (e.pests || []).map(x => typeof x === 'string' ? x : x.name || JSON.stringify(x)).join('; '), (e.hardHit || []).map(x => x.job).join('; '), (e.goodYear || []).map(x => x.job || x).join('; '), ...goods.map(g => e.yields && e.yields[g] != null ? Math.round(e.yields[g] * 100) : '')]; })] });
   }
+  if (typeof makerSheet === 'function') { const ms = makerSheet(W, people); if (ms) S.push(ms); }
   return S;
 }
 async function exportWorkbook(W, opts) { const sheets = workbookSheets(W, opts); return { blob: await makeZip(workbookFiles(sheets)), sheets }; }

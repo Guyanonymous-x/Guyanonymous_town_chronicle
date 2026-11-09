@@ -248,7 +248,7 @@ function commitCrime(W, rng, y, R, type, culprit, victim, motive, forceCaught) {
   if (type === 'theft' || type === 'fraud') { const h = W.households[victim.household]; if (h && h.savings > 0) { const amt = Math.round(h.savings * rng.range(0.05, 0.25) + (ECON[W.era] ? ECON[W.era].income.low * 0.1 : 0)); h.savings -= amt; const ch = W.households[culprit.household]; if (ch) ch.savings = (ch.savings || 0) + amt; c.amount = amt; setWealth(W, h); if (ch) setWealth(W, ch); } mindOf(victim).yearStress += 12; }
   if (type === 'assault') { injure(W, rng, victim, y, W._s, R, 'fighting'); mindOf(victim).trauma = clamp(mindOf(victim).trauma + 15, 0, 100); }
   if (type === 'arson') { const h = W.households[victim.household]; if (h) { if (h.property) h.property = Math.round(h.property * 0.4); if (h.savings > 0) h.savings = Math.round(h.savings * 0.7); setWealth(W, h); for (const id of h.members) { const q = W.people[id]; if (q && isAlive(q)) { mindOf(q).trauma = clamp(mindOf(q).trauma + 20, 0, 100); addEvent(W, q, y, 'crime', 'The home was set on fire in the night.'); } } } }
-  if (type === 'murder') { die(W, rng, victim, y, 'murdered', 'violence', R); c.victimDied = true; }
+  if (type === 'murder') { die(W, rng, victim, y, 'murdered', 'violence', R); c.victimDied = !isAlive(victim); }
   // was it seen? caught?
   const lawmen = lives(W).filter(p => /constable|sheriff|deputy|police|security|man-at-arms|guard|reeve/i.test(p.occupation || '')).length;
   let detect = J.detect + lawFx(W, 'detect') + Math.min(0.15, lawmen * 0.02) - (culprit.intellect - 50) / 250 + ({ murder: 0.25, assault: 0.3, arson: -0.1, fraud: -0.1, theft: -0.05 }[type] || 0);

@@ -206,3 +206,31 @@ textarea { font: inherit; padding: .4em .6em; border: 1px solid var(--line); bor
 .pchart { break-after: page; }
 .pdraw { font-size: 13pt; margin: 0 0 .5em; } .pdrawing svg { width: 100%; height: auto; max-height: 92vh; }
 .ppage { break-after: page; } .ppage:last-child { break-after: auto; } .ppage .pdrawing svg { max-height: 165mm; }
+
+/* make a person (LifeWeaver's person maker) */
+.mk-top { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+.mk-btns { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .7rem 1rem; }
+.mk-field label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .2rem; }
+.mk-fi { display: flex; gap: .3rem; align-items: flex-start; }
+.mk-fi input, .mk-fi select, .mk-fi textarea { flex: 1; min-width: 0; width: 100%; }
+.mk-field.locked input, .mk-field.locked select, .mk-field.locked textarea, tr.locked input, tr.locked textarea, .mk-story.locked { background: var(--accent-soft); }
+.mk-lock { padding: .25em .45em; line-height: 1; opacity: .55; }
+.mk-lock.on { opacity: 1; border-color: var(--accent); }
+.mk-wrap { overflow-x: auto; margin-bottom: .6rem; }
+.mk-table { width: 100%; border-collapse: collapse; }
+.mk-table th { text-align: left; font-size: .82rem; font-weight: 600; color: var(--muted); padding: .3em .3em; }
+.mk-table td { padding: .2em .3em; vertical-align: top; }
+.mk-table input, .mk-table textarea { width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: .3em .5em; }
+.mk-act { white-space: nowrap; width: 5.5rem; }
+.mk-tl { list-style: none; padding: 0; margin: 0; }
+.mk-tl li { padding: .3em 0; border-bottom: 1px solid var(--soft); }
+.mk-yr { display: inline-block; min-width: 6.5rem; font-weight: 600; }
+.mk-ag { display: inline-block; min-width: 4rem; font-size: .85rem; }
+.mk-storybar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .6rem; }
+.mk-story { width: 100%; min-height: 26rem; line-height: 1.55; background: #fff; }
+.mk-warn { border-color: #ecd9b0; background: #fdf7ea; } .mk-warn ul { margin: .3rem 0 0; }
+.mk-ok { border-color: #c6e1cc; background: #f1f8f2; color: var(--good); }
+.mk-how ol { margin: .4rem 0 0; }
+.mk-made { margin-top: 1rem; } .mk-made dl.kv dd { white-space: normal; }
+.mk-before summary { cursor: pointer; color: var(--accent); margin: .4rem 0; } .mk-before p { font-family: var(--serif); line-height: 1.6; }
