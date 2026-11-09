@@ -939,7 +939,10 @@ return {
 
 /* ---------- fitting a made person to the town ---------- */
 // Town Chronicle settings the maker can use for now. Frontier and Dropped come with the later step that combines both apps' lists.
-const MAKER_SETTINGS = { medieval: ['historical', 'medieval'], modern: ['modern', null], fantasy: ['fantasy', null], scifi: ['scifi', null] };
+const MAKER_SETTINGS = { medieval: ['historical', 'medieval'], modern: ['modern', null], fantasy: ['fantasy', null], scifi: ['scifi', null],
+  frontier: ['historical', 'victorian'], dropped: ['modern', null], tudor: ['historical', 'renaissance'], georgian: ['historical', 'georgian'], victorian: ['historical', 'victorian'], edwardian: ['historical', 'edwardian'] };
+// Birthplaces for frontier towns (LifeWeaver's Victorian list is British).
+const MAKER_PLACES = { frontier: ['St. Louis','Kansas City','Denver','San Francisco','Chicago','New York','Boston','Philadelphia','Cincinnati','Galveston','Santa Fe','Cork','Hamburg','Liverpool','Canton','Sonora'] };
 // When no birth year is locked, a made person is aged 16 to 50 on arrival: the ages Town Chronicle already uses for newcomers in plans.
 const MAKER_AGES = [16, 50];
 function makerAvailable(W) { return !!MAKER_SETTINGS[W.era]; }
@@ -949,7 +952,12 @@ function makerBlank(W) { const m = MAKER_SETTINGS[W.era]; return m ? LW.blankPer
 // Runs fn with LifeWeaver fitted to this town: "now" is the arrival year, people may still be alive, and years use the town's labels.
 function withTown(W, rand, fn) {
   const y = makerYear(W), era = ERAS[W.era];
-  LW.setTownFit(d => Object.assign({}, d, { now: y, alwaysDead: false, years: [y - MAKER_AGES[1], y - MAKER_AGES[0]], fmt: era.yearLabel || d.fmt }));
+  // LifeWeaver's names combined with the town's own (both apps' lists), so made people fit in with their neighbours
+  const cs = Object.keys(era.cultures || {}).map(c => CULTURES[c]).filter(Boolean), mix = (a, b) => [...new Set([...(a || []), ...b])];
+  const flat = l => Array.isArray(l) ? l : l && l.bands ? l.bands.flatMap(b => b[1]) : []; // modern name lists come in bands by birth year
+  LW.setTownFit(d => Object.assign({}, d, { now: y, alwaysDead: false, years: [y - MAKER_AGES[1], y - MAKER_AGES[0]], fmt: era.yearLabel || d.fmt,
+    names: { m: mix(d.names.m, cs.flatMap(c => flat(c.male))), f: mix(d.names.f, cs.flatMap(c => flat(c.female))) }, sur: mix(d.sur, cs.flatMap(c => flat(c.surnames))),
+    places: MAKER_PLACES[W.era] || d.places }));
   LW.setRandom(rand);
   try { return fn(); } finally { LW.setTownFit(null); LW.setRandom(null); }
 }

@@ -3,8 +3,9 @@ function fmtMoney(v) {
   const E = ECON[W.era]; if (!E || v == null) return '';
   const neg = v < 0; v = Math.abs(Math.round(v));
   let s;
-  if (W.era === 'medieval') { const l = Math.floor(v / 240), sh = Math.floor((v % 240) / 12), d = v % 12; s = l ? `£${l} ${sh}s` : sh ? `${sh}s ${d}d` : `${d}d`; }
+  if (W.era === 'medieval' || E.unit === 'pence') { const l = Math.floor(v / 240), sh = Math.floor((v % 240) / 12), d = v % 12; s = l ? `£${l} ${sh}s` : sh ? `${sh}s ${d}d` : `${d}d`; }
   else if (W.era === 'frontier' || W.era === 'modern') s = '$' + v.toLocaleString();
+  else if (E.unit === 'pounds') s = '£' + v.toLocaleString();
   else s = `${v.toLocaleString()} ${E.unit}`;
   return neg ? `−${s} (debt)` : s;
 }

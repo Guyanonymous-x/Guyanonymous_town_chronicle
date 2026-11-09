@@ -3,7 +3,7 @@ import asyncio, os
 from playwright.async_api import async_playwright
 URL = 'file:///home/claude/town/town-chronicle.html'
 SHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shots'); os.makedirs(SHOTS, exist_ok=True)
-ERAS = ['medieval', 'frontier', 'modern', 'fantasy', 'scifi', 'dropped']
+ERAS = ['medieval', 'frontier', 'modern', 'fantasy', 'scifi', 'dropped', 'tudor', 'georgian', 'victorian', 'edwardian']
 
 async def main():
     async with async_playwright() as p:
@@ -20,9 +20,6 @@ async def main():
             await pg.click(f'.eracard[data-era={era}]'); await pg.fill('#cPop', '150'); await pg.click('#cGo'); await pg.wait_for_selector('.stats')
             totals['settings'] += 1
             await pg.click('[data-nav=maker]'); await pg.wait_for_timeout(150)
-            if era in ('frontier', 'dropped'):
-                if 'isn’t ready yet' in await pg.inner_text('#main'): totals['not ready message'] += 1
-                await pg.screenshot(path=f'{SHOTS}/100-maker-{era}.png'); continue
             if era == 'medieval': await pg.screenshot(path=f'{SHOTS}/100-maker-empty.png', full_page=True)
             # type a first name (locks itself), then generate
             await pg.fill('[data-mpath="f.firstName"]', 'Wendeline'); await pg.wait_for_timeout(50)

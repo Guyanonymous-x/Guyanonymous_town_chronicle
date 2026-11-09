@@ -1,6 +1,6 @@
 // Advance towns many years and check every record. Usage: node sim_check.js era years pop seed
 const fs = require('fs'), vm = require('vm'), path = require('path');
-const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'census.js', 'edit.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
+const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'lives.js', 'census.js', 'edit.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
 const ctx = { module: { exports: {} }, console, Date, Math, JSON }; vm.createContext(ctx); vm.runInContext(src, ctx);
 const E = ctx.module.exports;
 function check(W) {

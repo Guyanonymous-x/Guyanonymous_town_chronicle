@@ -1,5 +1,89 @@
 # Town Chronicle — Changelog
 
+## V10 — Stage 8: four new periods, inner lives, attitudes, lasting injuries and photos (2026-11-09)
+
+**New settings: four history periods** (LifeWeaver's periods, now whole town settings)
+
+- **Tudor market town (around 1560):** the old faith giving way to the new, wool and cloth, the grammar school, the trained bands.
+- **Georgian market town (around 1780):** the squire and the vicar, enclosure, coaching inns, the canal, transportation to the colonies.
+- **Victorian mill town (around 1860):** the colliery, the mill, the railway, chapels, the magistrates' court, the police station.
+- **Early 1900s town (around 1912):** trams and motor buses, the picture house, typists, suffrage, and the Great War on the way.
+- **What each one has:**
+  - its own years, names, faiths, places, venues, jobs and workplaces, hobbies, hopes, illnesses, feuds, groups, events, justice, leaders, gossip, homes and money
+  - Money is shown in pounds.
+  - Each period is built on a close setting (medieval or frontier), so the economy and everything else work the same way. Jobs are renamed for the period, and a few new ones are added.
+- **Combined names:** the names in these periods are Town Chronicle's lists combined with LifeWeaver's, plus more from each period.
+- **Make a person** now works in **all ten settings**, including frontier and dropped towns. Its names are LifeWeaver's and the town's own, combined.
+
+**New: who people are inside**
+
+- **Gender:** most people feel the gender they were raised as. A few (0.6% trans and 0.4% non-binary, both changeable in Era settings) realise, as children or later, that they don't.
+- **Sexuality:** gay and bisexual people realise in their teens.
+- **Hiding it** makes them unhappier every year. While hiding, a gay person looks for the partner the town expects, and may "live a lie".
+- **Coming out** depends on the town's attitude, on the attitudes of their family, partner and close friends, and on their own nature. It is rare where people are hostile and common where they are welcoming.
+  - Many trans people take a new name.
+  - Family and friends who disapprove take it badly, and some turn their back on them for good. Those who accept them stand by them.
+  - A marriage of convenience may end.
+- **Words:** words follow the gender someone lives as. For non-binary people the app uses their name instead of "he" or "she", so every sentence still reads correctly.
+- **On a person's page,** "Who they are" shows how they live, and with **Show secrets** on, what they are hiding. Their **Edit & plan** tab lets you change who they live as, who they are drawn to, and whether they are open about it.
+
+**New: attitudes, and an Attitudes page**
+
+- **Six issues:** the town, and every person, has an attitude (−100 hostile to +100 welcoming) to:
+  - same-sex love
+  - trans and non-binary people
+  - disabled and disfigured people
+  - newcomers and other cultures
+  - other faiths
+  - women working and leading
+- **Where they start:** each setting starts from an estimate for its time.
+- **How they change:** each person's attitudes come from the town, their personality and age. Children take their family's. Every year they drift towards their family, friends and the town, and knowing someone well softens views. Each period also gently pulls people back to the views of its time.
+- **What they do:**
+  - warm or cool friendships and family ties
+  - raise or lower reputations
+  - where the town is hostile, lead to people being jeered at and shunned, or even attacked (recorded as a crime)
+  - make people more or less likely to come out
+- **Controls:**
+  - Set the town's attitude to anything and **hold it there**: people are nudged towards it each year, like sermons, newspapers or laws.
+  - Release it, and it follows what people think.
+  - The law on same-sex couples can follow the town (Era settings, on by default).
+
+**New: lasting injuries that change a life**
+
+- **Severe injuries:** 1 in 5 lasting injuries is now severe: blindness, the loss of an arm or a leg, deafness, or a badly burned face. This is changeable in Era settings.
+- **Work:** someone who can no longer do their work gives it up, and only looks for work they can still do.
+- **Risk:** some injuries make people more likely to be hurt again.
+- **Other people:** disabled and disfigured people are treated according to people's attitudes. A disfigured face can frighten or put people off.
+
+**New: photos**
+
+- **Adding photos:** add a photo to anyone from their page. It is shrunk to at most 1000 pixels and kept inside the save, so one file still holds the whole town.
+- **Each photo** has a year and a caption, and can show several people (a group photo).
+- **Main picture:** any photo can be someone's main picture, shown at the top of their page and in their printed life story.
+- **Photos page:** a new page shows every photo in the town.
+
+**Also fixed**
+- **Births after prison:** a woman who was pregnant when locked up used to give birth when she was let out, sometimes years later. Now she gives birth in prison, and the baby goes home to the father, or else to her old home or her parents.
+- **Leaving a job:** when lasting injuries made someone give up work, they were still recorded as having the job.
+
+**Checked**
+- **All earlier checks** were rerun on all ten settings:
+  - 50 years lived forward, editing and plans, person family trees, whole-family trees, and family-tree files and Excel workbooks read back: 0 problems
+  - in Chrome: person, household, tree and map pages, editing, exports, printing, pictures, saves and reopening: 0 errors
+- **New V10 check:** all ten settings each run for 50 years, 27,270 people in all.
+  - **Inner lives:** 208 people felt a gender other than the one they were raised as. 130 realised it; 58 came out, and 24 were still hiding. 894 gay or bisexual people: 327 open, 89 hiding. 211 comings-out, 14 new names, and 90 family ties broken after someone came out.
+  - **Hostility:** 1,469 people were jeered at or shunned, and 67 hate attacks recorded as crimes, all in hostile settings and none in welcoming ones.
+  - **Injuries:** 187 people with severe lasting injuries, 78 of whom had to give up their work. Nobody held work their injuries rule out.
+  - **Prison births:** 11 births in prison, each baby going home.
+  - **Records:** attitudes all within range, and no broken text.
+  - Problems: 0.
+- **Person maker and moving in, all ten settings:**
+  - 3,000 people made.
+  - 400 made people moved in with 201 partners and 446 children: 372 came and 74 stayed behind.
+  - All 80 people whose locked death year came died in exactly that year.
+  - Their exports were read back: 17,378 people and 5,066,331 Excel cells, with 0 differences.
+- **In Chrome:** Make a person in all ten settings (210 people generated). The new periods' pages, money in pounds, the Attitudes page, holding and releasing an attitude, the law following the town, changing who someone lives as, and adding, linking, choosing and deleting photos, with undo: all passed, 0 errors.
+
 ## V9 — Stage 7: Make a person (LifeWeaver's person maker joins the app) (2026-11-09)
 
 **New: Make a person page** (in the menu, after Storyteller)

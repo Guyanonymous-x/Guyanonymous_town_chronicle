@@ -1,6 +1,6 @@
 // Makes the family-tree file and Excel workbook for a community, plus what they should contain. Usage: node export_check.js era years seed
 const fs = require('fs'), vm = require('vm'), path = require('path');
-const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'census.js', 'edit.js', 'export.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
+const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'lives.js', 'census.js', 'edit.js', 'export.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
 const ctx = { module: { exports: {} }, console, Date, Math, JSON, Blob, Response, CompressionStream, DecompressionStream, TextEncoder, TextDecoder, Uint8Array, Uint32Array }; vm.createContext(ctx); vm.runInContext('var W;' + src, ctx);
 const E = ctx.module.exports;
 const era = process.argv[2] || 'medieval', years = +(process.argv[3] || 10), seed = +(process.argv[4] || 5), out = process.argv[5] || '/tmp/exp';

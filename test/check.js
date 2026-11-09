@@ -5,7 +5,7 @@ const ctx = { module: { exports: {} }, console, Date, Math, JSON };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const E = ctx.module.exports;
 const N = +(process.argv[2] || 1000), SEED = +(process.argv[3] || 12345);
-const eras = process.argv[4] ? [process.argv[4]] : ['medieval', 'frontier', 'modern', 'fantasy', 'scifi', 'dropped'];
+const eras = process.argv[4] ? [process.argv[4]] : ['medieval', 'frontier', 'modern', 'fantasy', 'scifi', 'dropped', 'tudor', 'georgian', 'victorian', 'edwardian'];
 let totalProblems = 0;
 for (const era of eras) {
   const modes = era === 'dropped' ? ['mixed', 'strangers', 'families'] : [null];

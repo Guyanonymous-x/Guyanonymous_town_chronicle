@@ -175,6 +175,7 @@ function upgradeWorld(W) {
   socUpgrade(W);
   if (!W.censusDetail || !W.censusDetail[W.year]) takeCensus(W);
   W.version = Math.max(W.version || 1, 4);
+  if (typeof livesUpgrade === 'function') livesUpgrade(W); // V10: attitudes and inner lives
 }
 function rng0(n) { let x = (n * 2654435761) >>> 0; x ^= x >>> 13; return x; }
 function currentOcc(W, p) {
@@ -209,6 +210,7 @@ function advanceYear(W) {
     seasonBirths(W, rng, y, s, R);
   }
   W._s = null;
+  if (typeof livesYear === 'function') livesYear(W, rng, y, R); // V10: inner lives, attitudes, lasting injuries
   yearRomance(W, rng, y, R);
   yearSocial(W, rng, y, R);
   yearGossip(W, rng, y, R);
@@ -281,7 +283,7 @@ function seasonHealth(W, rng, y, s, R, outbreak) {
     else if (a >= 70) risk = { k: 'elder', r: 0.03 + (a - 70) * 0.004 };
     else if (o) risk = { k: /miner|mining/i.test(o.name) ? 'mining' : (INJURIES[o.skill] ? o.skill : 'labor'), r: (/miner|mining/i.test(o.name) ? 0.12 : INJURY_RISK[o.skill] || 0.02) };
     else risk = { k: 'labor', r: 0.012 };
-    risk.r *= S.accidents * ((p.mind && p.mind.drink > 50) ? 1.8 : 1);
+    risk.r *= S.accidents * ((p.mind && p.mind.drink > 50) ? 1.8 : 1) * (typeof injuryProneness === 'function' ? injuryProneness(p) : 1); // V10: some lasting injuries make people more accident-prone
     if (rng.chance(risk.r / 4)) injure(W, rng, p, y, s, R, risk.k);
     if (rng.chance((a >= 16 ? (W.era === 'modern' ? 0.006 : 0.003) : 0.001) / 4 * S.accidents)) injure(W, rng, p, y, s, R, 'travel');
     if (!isAlive(p)) continue;
@@ -345,7 +347,7 @@ function injure(W, rng, p, y, s, R, kind) {
     const m = mindOf(p); m.yearStress += 20; m.trauma = clamp(m.trauma + 8, 0, 100);
     p.health = Math.round(clamp(p.health - rng.int(4, 15), 1, 100));
     let lasting = null;
-    if (rng.chance(0.28 * (1 - med * 0.5))) { lasting = rng.pick(LASTING.filter(l => !p.conditions.includes(l))); if (lasting) { p.conditions.push(lasting); for (const k of Object.keys(p.skills || {})) if (/labor|craft|fighting|farming/.test(k)) p.skills[k] = Math.max(0, p.skills[k] - rng.int(3, 12)); } }
+    if (rng.chance(0.28 * (1 - med * 0.5))) { lasting = (typeof severeInjury === 'function' && severeInjury(W, rng, p)) || rng.pick(LASTING.filter(l => !p.conditions.includes(l))); if (lasting) { p.conditions.push(lasting); for (const k of Object.keys(p.skills || {})) if (/labor|craft|fighting|farming/.test(k)) p.skills[k] = Math.max(0, p.skills[k] - rng.int(3, 12)); } }
     addEvent(W, p, y, 'injury', `Badly hurt: ${what}${lasting ? `, leaving ${himHer(p)} with ${lasting}` : ''}.`, blame ? { why: `@${blame.id} was to blame.` } : null);
     ripple(W, rng, p, y, 'worry', 18, `Worried over {who}, badly hurt (${what}).`);
     if (blame) blameFor(W, rng, blame, p, y, what, false);
@@ -410,6 +412,9 @@ function afterDeath(W, rng, p, y, cause, kind) {
 function seasonBirths(W, rng, y, s, R) {
   const S = W.settings;
   const people = lives(W);
+  // a woman locked up while expecting gives birth there, and the baby goes home to the father, or else to her old home or her parents
+  // (V10 fix: before, the birth waited until she was let out, sometimes years later)
+  for (const w of Object.values(W.people)) if (w.status === 'prison' && w.preg && isAlive(w) && w.preg.y * 4 + w.preg.s <= y * 4 + s) prisonBirth(W, rng, w, y, s, R);
   for (const w of people) {
     if (w.sex !== 'f' || !isAlive(w)) continue;
     const a = ageOf(w, y);
@@ -460,10 +465,20 @@ function seasonBirths(W, rng, y, s, R) {
       w.lastBirth = y * 4 + s - 2;
     } else if (father && !secret && w.spouse !== father.id) {
       // an unmarried pregnancy: news travels
-      addEvent(W, w, y, 'pregnant', `Found ${himHer(w)}self expecting a child by @${father.id}, though they were not married.`);
+      addEvent(W, w, y, 'pregnant', `Found ${himHerSelf(w)} expecting a child by @${father.id}, though they were not married.`);
       addEvent(W, father, y, 'pregnant', `@${w.id} is expecting his child.`);
     }
   }
+}
+function prisonBirth(W, rng, w, y, s, R) {
+  const grown = h => h && h.members.some(id => { const q = W.people[id]; return q && isAlive(q) && q.status === 'resident' && ageOf(q, y) >= 16; });
+  const dad = w.preg.father ? W.people[w.preg.father] : null;
+  const homes = [dad && isAlive(dad) && dad.status === 'resident' ? W.households[dad.household] : null, W.households[w.prevHousehold],
+    ...[w.mother, w.father].map(id => W.people[id]).filter(q => q && isAlive(q) && q.status === 'resident').map(q => W.households[q.household])];
+  const home = homes.find(grown); if (!home) return; // nobody to take the baby yet: it waits
+  const was = w.household; w.household = home.id;
+  try { giveBirth(W, rng, w, y, s, R); } finally { w.household = was; home.members = home.members.filter(id => id !== w.id || was === home.id); }
+  addEvent(W, w, y, 'child_born', `Gave birth while locked up; the baby went to ${home.name}.`);
 }
 function giveBirth(W, rng, w, y, s, R) {
   const S = W.settings;
@@ -870,6 +885,7 @@ function chooseJob(W, rng, p, y, slots) {
   const cands = [];
   for (const o of slots.occs) {
     if (o.apprentice || o.spouseOf || isOfficeOcc(W, o.id)) continue;
+    if (typeof canDoWork === 'function' && !canDoWork(p, o)) continue; // V10: work their injuries no longer allow
     const open = slots.want[o.id] - (slots.have[o.id] || 0);
     if (open <= 0.3) continue;
     if (a < o.min || (o.max && a > o.max)) continue;
@@ -887,6 +903,7 @@ function chooseJob(W, rng, p, y, slots) {
   return o;
 }
 function startJob(W, rng, p, o, y, why, R) {
+  if (typeof canDoWork === 'function' && !canDoWork(p, o)) return; // V10: work their lasting injuries no longer allow
   if (p.workplace) leaveJob(W, rng, p, y, 'moved on');
   const was = p.occupation;
   p.occId = o.id; p.occupation = o.name; p.jobSince = y;
@@ -1251,3 +1268,12 @@ function personYearSummary(W, p, y) {
 }
 
 if (typeof module !== 'undefined') Object.assign(module.exports, { advanceYear, upgradeWorld, personYearSummary, SEASONS, griefLoad });
+
+// ---------- history periods (V10): their own defaults where they differ, else their base setting's ----------
+EXTRA_DEFAULTS.tudor = Object.assign({}, EXTRA_DEFAULTS.medieval, { arrivals: 8, medicine: 0.06, outbreaks: 0.26 });
+EXTRA_DEFAULTS.georgian = Object.assign({}, EXTRA_DEFAULTS.medieval, { arrivals: 12, leaving: 0.03, medicine: 0.1, outbreaks: 0.2 });
+EXTRA_DEFAULTS.victorian = Object.assign({}, EXTRA_DEFAULTS.frontier, { arrivals: 22, leaving: 0.05, familiesLeaving: 0.015, medicine: 0.25, outbreaks: 0.22 });
+EXTRA_DEFAULTS.edwardian = Object.assign({}, EXTRA_DEFAULTS.frontier, { arrivals: 18, leaving: 0.05, familiesLeaving: 0.015, medicine: 0.45, outbreaks: 0.14 });
+periodFill(EXTRA_DEFAULTS);
+for (const [k, e] of Object.entries(ERAS)) if (e.base) e.settings = Object.assign({}, EXTRA_DEFAULTS[k], e.settings); // periods were copied before their base got these
+periodFillLists(DISEASES);

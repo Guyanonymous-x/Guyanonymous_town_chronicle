@@ -552,3 +552,33 @@ function econSummary(W, y, Y) {
 }
 
 if (typeof module !== 'undefined') Object.assign(module.exports, { econStart, econUpgrade, ECON });
+
+// ---------- history periods (V10) ----------
+ECON.victorian = Object.assign({}, ECON.frontier, { unit: 'pounds', homes: [['a cellar dwelling', 25], ['a back-to-back house', 200], ['a terraced house', 900], ['a villa on the park', 6000]], ownChance: 0.2 });
+ECON.edwardian = Object.assign({}, ECON.frontier, { unit: 'pounds', homes: [['a cellar dwelling', 25], ['a back-to-back house', 200], ['a through terrace with a yard', 900], ['a villa on the park', 6000]], ownChance: 0.25 });
+ECON.georgian = Object.assign({}, ECON.medieval, { homes: [['a one-room cottage', 500], ['a cottage and garden', 1400], ['a brick townhouse', 4000], ['the Hall', 30000]] });
+ECON.tudor = Object.assign({}, ECON.medieval, { homes: [['a one-room cottage', 500], ['a cottage and croft', 1400], ['a timber-framed house with a chimney', 4000], ['the manor house', 30000]] });
+PESTS.victorian = PESTS.edwardian = [['grain', 'the wheat rust'], ['livestock', 'foot-and-mouth in the herds'], ['apples', 'apple scab'], ['ore', 'the coal seam running thin'], ['timber', 'a wet year at the timber yard']];
+EVENTS.tudor = [
+  { k: 'fire', p: 0.05, name: 'a great fire in the Market Place' }, { k: 'flood', p: 0.04, name: 'the river flooding' }, { k: 'storm', p: 0.05, name: 'a great storm' },
+  { k: 'war', p: 0.035, name: 'the Queen\'s war against Spain', what: 'the trained bands' }, { k: 'raid', p: 0.02, name: 'a band of sturdy beggars' },
+  { k: 'tax', p: 0.06, name: 'a new subsidy granted to the Crown' }, { k: 'boom', p: 0.04, name: 'the cloth trade booming' }, { k: 'bust', p: 0.03, name: 'the cloth trade with Antwerp failing' },
+  { k: 'bumper', p: 0.05, name: 'a bumper harvest' }
+];
+EVENTS.georgian = [
+  { k: 'fire', p: 0.04, name: 'a fire at the coaching inn' }, { k: 'flood', p: 0.04, name: 'the river flooding' }, { k: 'storm', p: 0.05, name: 'a great storm' },
+  { k: 'war', p: 0.04, name: 'the war with France', what: 'the militia' }, { k: 'raid', p: 0.02, name: 'a gang of highwaymen' },
+  { k: 'tax', p: 0.05, name: 'a new tax on windows and candles' }, { k: 'boom', p: 0.05, name: 'the canal reaching town' }, { k: 'boom', p: 0.03, name: 'a cotton mill opening' },
+  { k: 'bust', p: 0.03, name: 'the price of corn collapsing' }, { k: 'bumper', p: 0.05, name: 'a bumper harvest' }
+];
+EVENTS.victorian = [
+  { k: 'fire', p: 0.06, name: 'a fire at the mill' }, { k: 'flood', p: 0.04, name: 'the river bursting its banks' }, { k: 'storm', p: 0.05, name: 'a great gale' },
+  { k: 'raid', p: 0.02, name: 'a gang of garotters' }, { k: 'boom', p: 0.05, name: 'a new mill opening' }, { k: 'boom', p: 0.04, name: 'a rich new coal seam' },
+  { k: 'bust', p: 0.05, name: 'the cotton famine' }, { k: 'bumper', p: 0.04, name: 'a bumper harvest' }, { k: 'war', p: 0.015, name: 'the war in the Crimea', what: 'the regiment' }
+];
+EVENTS.edwardian = [
+  { k: 'fire', p: 0.05, name: 'a fire at the mill' }, { k: 'flood', p: 0.04, name: 'the river bursting its banks' }, { k: 'storm', p: 0.05, name: 'a great gale' },
+  { k: 'raid', p: 0.015, name: 'a gang of burglars' }, { k: 'boom', p: 0.05, name: 'a new factory opening' }, { k: 'boom', p: 0.03, name: 'the tramway reaching town' },
+  { k: 'bust', p: 0.05, name: 'a long strike at the pit' }, { k: 'bumper', p: 0.04, name: 'a bumper harvest' }, { k: 'war', p: 0.03, name: 'the Great War', what: 'the Pals battalion' }
+];
+periodFill(ECON, PESTS, EVENTS);

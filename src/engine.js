@@ -31,10 +31,14 @@ function ageOf(p, y) { return y - p.born; }
 function isAlive(p) { return p.died == null; }
 function isResident(p) { return p.status === 'resident'; }
 function eraOf(W) { return ERAS[W.era]; }
-function heShe(p) { return p.sex === 'm' ? 'he' : 'she'; }
-function hisHer(p) { return p.sex === 'm' ? 'his' : 'her'; }
-function himHer(p) { return p.sex === 'm' ? 'him' : 'her'; }
-function rel3(p, m, f, n) { return p.sex === 'm' ? m : (p.sex === 'f' ? f : n); }
+// Words follow the gender a person lives as (V10): body sex unless they have come out as something else.
+// Non-binary people are called by their name rather than "they", so every sentence still reads correctly.
+function genderOf(p) { return p.gender || (p.sex === 'm' ? 'man' : 'woman'); }
+function heShe(p) { const g = genderOf(p); return g === 'man' ? 'he' : g === 'woman' ? 'she' : p.first; }
+function hisHer(p) { const g = genderOf(p); return g === 'man' ? 'his' : g === 'woman' ? 'her' : `${p.first}'s`; }
+function himHer(p) { const g = genderOf(p); return g === 'man' ? 'him' : g === 'woman' ? 'her' : p.first; }
+function himHerSelf(p) { const g = genderOf(p); return g === 'man' ? 'himself' : g === 'woman' ? 'herself' : 'themself'; }
+function rel3(p, m, f, n) { const g = genderOf(p); return g === 'man' ? m : g === 'woman' ? f : (n ?? (p.sex === 'm' ? m : f)); }
 function ordinal(n) { return ['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth','eleventh','twelfth'][n - 1] || (n + 'th'); }
 function fullName(p) { return p ? `${p.first} ${p.last}` : 'unknown'; }
 
@@ -279,6 +283,7 @@ function marryFactor(W, p, y) {
   return f;
 }
 function wantsSameSex(W, rng, p) {
+  if (p.so && !p.so.out) return false; // V10: someone still hiding who they love looks for the 'expected' partner
   if (!W.settings.sameSexCouples) return false;
   if (p.orientation === 'gay') return true;
   if (p.orientation === 'bisexual') return rng.chance(0.35);

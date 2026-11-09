@@ -1,6 +1,6 @@
 // Checks family-tree layouts: no overlapping boxes, every line connects drawn people. Usage: node tree_check.js era years
 const fs = require('fs'), vm = require('vm'), path = require('path');
-const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'census.js', 'edit.js', 'viz.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n') + '\n;this.__set = w => { W = w; };';
+const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'lives.js', 'census.js', 'edit.js', 'viz.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n') + '\n;this.__set = w => { W = w; };';
 const ctx = { module: { exports: {} }, console, Date, Math, JSON }; vm.createContext(ctx); vm.runInContext('var W;' + src, ctx);
 const E = ctx.module.exports;
 const era = process.argv[2] || 'medieval', years = +(process.argv[3] || 20);

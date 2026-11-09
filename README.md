@@ -15,8 +15,12 @@ Save your community to a file whenever you like. You can open it later, scroll b
 
 ## Settings
 
-- Medieval village
-- Frontier town
+- Medieval village (around 1320)
+- **Tudor market town** (around 1560)
+- **Georgian market town** (around 1780)
+- Frontier town (around 1872)
+- **Victorian mill town** (around 1860)
+- **Early 1900s town** (around 1912)
 - Modern town
 - Fantasy realm
 - Sci-fi colony
@@ -28,6 +32,13 @@ Save your community to a file whenever you like. You can open it later, scroll b
   - names, families, looks, personality, faith, work, goals, fears and secrets
   - friends, loves, rivals and enemies, each with a history of what happened between them
   - hermits and loners
+  - **who they are inside:** most feel the gender they were raised as, but some realise, as children or later, that they don't. Gay and bisexual people realise in their teens. Each then hides it, at a cost to their happiness, or comes out, depending on the town and the people around them.
+  - **lasting injuries:** blindness, a lost arm or leg, deafness or a badly burned face. These can stop someone doing their work, make them more likely to be hurt again, and change how others treat them.
+  - **photos:** add photos to anyone, from any year of their life. A photo can show several people (a group photo), and any photo can be someone's main picture.
+- **Attitudes:** the town, and every person, has an attitude to six things: same-sex love, trans and non-binary people, disabled and disfigured people, newcomers and other cultures, other faiths, and women working and leading.
+  - Attitudes drift with family, friends and the times. They warm or cool friendships, raise or lower reputations, and decide whether people dare to come out.
+  - Where the town is hostile, people are jeered at, shunned or even attacked.
+  - On the Attitudes page you can set the town's attitude and hold it there, and the law on same-sex couples can follow the town.
 - **Each year,** season by season:
   - births, deaths, illness, marriages, separations and affairs
   - jobs, crime, gossip, elections, laws, feuds, newcomers and people leaving

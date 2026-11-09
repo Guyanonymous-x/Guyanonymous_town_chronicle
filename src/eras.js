@@ -534,3 +534,169 @@ const ERAS = {
   }
 };
 ERAS.dropped.occupations = ERAS.modern.occupations; // old-world jobs
+
+// ================= history periods (V10) =================
+// Each period copies a close setting (its "base"), so the economy, offices, crime and everything else work the same way,
+// then changes what differs: years, names, jobs (renamed, plus a few new ones), faiths, places, venues and wording.
+// Tables in other files fall back to the base setting unless the period has its own entry (see periodFill).
+function makePeriod(key, base, o) {
+  const B = ERAS[base];
+  const E = Object.assign({}, B, o.era, { key, base });
+  E.settings = Object.assign({}, B.settings, o.settings || {});
+  E.occupations = B.occupations.map(x => { const r = (o.rename || {})[x.name]; const pl = (o.places || {})[x.place];
+    if (!r && !pl) return x; const [name, extra] = Array.isArray(r) ? r : [r || x.name, null]; return Object.assign({}, x, { name }, pl ? { place: pl } : {}, extra || {}); });
+  const at = E.occupations.findIndex(x => x.apprentice || x.filler);
+  E.occupations.splice(at < 0 ? E.occupations.length : at, 0, ...(o.add || []).map(a => occ(a[0], a[1], a[2])));
+  ERAS[key] = E;
+  return E;
+}
+// Give every period the base setting's entry in a table, unless it has its own.
+function periodFill(...tables) { for (const [k, e] of Object.entries(ERAS)) if (e.base) for (const t of tables) if (t && t[e.base] !== undefined && t[k] === undefined) t[k] = t[e.base]; }
+// Lists whose items say which settings they belong to ({ eras: [...] }): a period joins wherever its base is listed.
+function periodFillLists(...lists) { for (const [k, e] of Object.entries(ERAS)) if (e.base) for (const list of lists) for (const it of list || []) if (Array.isArray(it.eras) && it.eras.includes(e.base) && !it.eras.includes(k)) it.eras.push(k); }
+const eraBase = W => (ERAS[W.era] && ERAS[W.era].base) || W.era;
+
+// names: Town Chronicle's lists combined with LifeWeaver's, plus names of each period
+const nameMix = (...ls) => [...new Set(ls.flat())];
+CULTURES.tudorEnglish = { label: 'English', language: 'English',
+  male: nameMix(['John','William','Thomas','Richard','Robert','Henry','Edward','George','Francis','Nicholas','Christopher','Edmund','Anthony','Walter','Hugh','Ralph','Roger','Humphrey','Lawrence','Matthew','James','Peter','Simon','Gilbert','Adam','Bartholomew','Ambrose','Giles','Miles','Toby','Jasper','Oliver','Philip','Arthur','Geoffrey'], ['Walter','Geoffrey','Hugh','Simon','Edmund','Gilbert','Nicholas','Adam']),
+  female: nameMix(['Alice','Agnes','Joan','Margaret','Elizabeth','Anne','Jane','Mary','Katherine','Isabel','Ellen','Margery','Dorothy','Frances','Bridget','Grace','Joyce','Susan','Judith','Eleanor','Cecily','Lettice','Thomasine','Winifred','Mabel','Rose','Amy','Barbara','Ursula','Bennet'], ['Matilda','Emma','Beatrice','Juliana','Edith','Maud','Avice']),
+  surnames: nameMix(CULTURES.medievalEnglish.surnames, ['Baker','Carter','Fletcher','Miller','Smith','Thatcher','Cooper','Ward','Atwood','Fuller','Mason','Shepherd','Webb','Draper','Hale','Turner','Wright','Brewer','Johnson','Robinson','Harris','Lambert','Parsons','Tyler','Godfrey','Pennington','Burrows','Fenwick','Hargreave','Wilde']) };
+CULTURES.georgianEnglish = { label: 'English', language: 'English',
+  male: nameMix(['John','William','Thomas','James','George','Richard','Joseph','Samuel','Robert','Charles','Edward','Henry','Benjamin','Daniel','Francis','Isaac','Jonathan','Matthew','Nathaniel','Stephen','Abraham','Josiah','Jeremiah','Peter','Philip','Edmund'], ['George','Charles','Edward','Joseph','Samuel','William','James','John','Henry','Walter']),
+  female: nameMix(['Mary','Elizabeth','Ann','Sarah','Jane','Hannah','Martha','Susannah','Margaret','Catherine','Frances','Charlotte','Rebecca','Esther','Lydia','Phoebe','Rachel','Betty','Molly','Hester','Amelia','Harriet','Maria','Caroline','Lucy','Dorothy'], ['Emily','Harriet','Charlotte','Martha','Eliza','Alice','Edith']),
+  surnames: nameMix(['Smith','Jones','Taylor','Brown','Wilson','Robinson','Wood','Thompson','Wright','Walker','White','Hughes','Holt','Barlow','Ashworth','Pickering','Dawson','Marsh'], ['Clarke','Hall','Green','Harrison','Mitchell','Parker','Bennett','Cooke','Turner','Lambert','Price','Ward','Fisher','Hammond','Kirby','Lowther','Pemberton','Radcliffe','Sutton','Whitaker','Yates','Ellison','Gregson','Higson']) };
+CULTURES.victorianEnglish = { label: 'English', language: 'English',
+  male: nameMix(['George','Albert','Arthur','Frederick','Charles','Edward','Harry','Alfred','Joseph','Walter','Samuel','Ernest','William','James','John','Henry'], ['Thomas','Herbert','Frank','Harold','Sidney','Percy','Reginald','Horace','Edwin','Wilfred','Ellis','Abel','Enoch','Jabez','Tom','Fred','Robert','Richard','Isaac','Benjamin']),
+  female: nameMix(['Mary','Elizabeth','Sarah','Ann','Emily','Florence','Ada','Harriet','Charlotte','Martha','Eliza','Victoria','Jane','Alice','Edith','Clara'], ['Annie','Ellen','Emma','Fanny','Louisa','Lucy','Minnie','Nellie','Rose','Hannah','Agnes','Amelia','Beatrice','Esther','Kate','Maud','Lizzie','Bertha','Lilian','Violet']),
+  surnames: nameMix(['Smith','Jones','Taylor','Brown','Wilson','Robinson','Wood','Thompson','Wright','Walker','White','Hughes','Holt','Barlow','Ashworth','Pickering','Dawson','Marsh'], ['Hall','Green','Clarke','Jackson','Lee','Harrison','Cooper','Shaw','Bailey','Hardcastle','Greenwood','Sutcliffe','Crabtree','Hepworth','Ackroyd','Butterworth','Ogden','Pilling','Rothwell','Haworth','Lumb','Whiteley']) };
+CULTURES.edwardianEnglish = { label: 'English', language: 'English',
+  male: nameMix(CULTURES.victorianEnglish.male, ['Stanley','Leonard','Cyril','Norman','Cecil','Leslie','Douglas','Ronald','Dennis','Eric','Kenneth','Victor','Clifford','Bernard','Jack','Joe']),
+  female: nameMix(CULTURES.victorianEnglish.female, ['Doris','Dorothy','Gladys','Elsie','Ivy','Hilda','Irene','Mabel','Winifred','Vera','Phyllis','Marjorie','Kathleen','Lily','Evelyn','Muriel']),
+  surnames: CULTURES.victorianEnglish.surnames };
+
+makePeriod('tudor', 'medieval', {
+  era: { label: 'Tudor market town', icon: '🌹',
+    description: 'An English market town around 1560, in the age of the Tudors. The old faith gives way to the new, wool and cloth bring money, and the poor laws begin.',
+    startYear: 1560, cultures: { tudorEnglish: 1 }, faiths: { 'Church of England': 0.82, 'Catholic (in secret)': 0.12, 'Puritan': 0.06 },
+    placeNames: ['Ashby St Ledgers','Market Wenlock','Thornbury','Chipping Hollow','Kingsbridge','Woolhampton','Stowe Parva','Brackley Cross','Long Melford','Haverhill'],
+    districts: ['Church Row','Mill Lane','the Green','Smithy End','Market Place','Sheep Street','the Manor Close','Tenter Lane','the Almshouses','Orchard Way'],
+    venues: [
+      { id: 'church', name: 'the parish church', kind: 'worship', who: 'all', p: 0.9 },
+      { id: 'tavern', name: 'the Swan inn', kind: 'tavern', who: 'adults', p: 0.5 },
+      { id: 'market', name: 'market day in the Market Place', kind: 'market', who: 'adults', p: 0.75 },
+      { id: 'court', name: 'the manor court and vestry', kind: 'civic', who: 'men', p: 0.45 },
+      { id: 'well', name: 'the town pump', kind: 'gathering', who: 'women', p: 0.55 },
+      { id: 'school', name: 'the free grammar school', kind: 'school', who: 'kids', p: 0 }
+    ],
+    schoolName: 'the free grammar school',
+    hobbies: ['archery at the butts','bowls on the green','cards and dice','singing ballads','dancing at May Day','bear-baiting at the fair','playing the lute','football on Shrove Tuesday','embroidery','telling tales by the fire'],
+    goals: ['to buy the freehold of their land','to see their children well married','to become a master of their craft','to rise to be a churchwarden','to send a son to the grammar school','to own a share in a wool ship','to leave money for the poor in their will','to build a house with glass windows'],
+    illnesses: ['the sweating sickness','the plague','smallpox','a fever','the bloody flux','consumption','a festering wound','a winter cough','a fall from a horse','drowning in the mill race'],
+    feudReasons: ['a hedge planted across the common','a quarrel over the new prayer book','an unpaid debt of a crown','a broken betrothal','a cow that strayed into the wheat','an insult in the alehouse','a disputed will'],
+    groupNames: ['the {district} lads','the bell-ringers','the clothiers\' company','the church-ale brewers','the archers of the butts','the May Day dancers','the vestry men'],
+    hermitReasons: ['lost everything when the abbey was closed','never cared for company after the sweating sickness took their family','is said to be a secret Catholic who keeps to themselves','fell out with the whole parish over a will'] },
+  settings: { infantDeath: 0.2, adultDeath: 0.0085, literacy: 0.15, schooling: 0.06 },
+  rename: { 'Villein farmer': 'Husbandman', 'Cottar': 'Cottager', 'Parish priest': ['Parson', { celibate: false }], 'Herb-wife': 'Cunning woman', 'Minstrel': 'Fiddler', 'Peddler': 'Chapman', 'Cordwainer': 'Shoemaker', 'Woodward': 'Woodreeve' },
+  add: [['Schoolmaster', 1, { sex: 'm', min: 20, cls: 'mid', wp: 'shared', place: 'the grammar school', lit: true, skill: 'learning' }],
+    ['Clothier', 2, { min: 20, cls: 'mid', wp: 'own', place: 'cloth hall', skill: 'trade', uses: ['cloth'] }],
+    ['Glover', 1, { wp: 'own', place: 'glove shop', skill: 'craft', uses: ['leather'] }]]
+});
+makePeriod('georgian', 'medieval', {
+  era: { label: 'Georgian market town', icon: '🎩',
+    description: 'An English market town around 1780. The squire and the vicar, enclosure of the open fields, coaching inns, turnpike roads and the first mills.',
+    startYear: 1780, cultures: { georgianEnglish: 0.92, irish: 0.08 }, faiths: { 'Church of England': 0.74, 'Methodist': 0.16, 'Baptist': 0.04, 'Catholic': 0.04, 'Quaker': 0.02 },
+    placeNames: ['Market Harborough Parva','Ashby Magna','Stamford Cross','Wellbury','Coldbrook','Fairford','Newbold','Hartington','Kirkby Lonsdale','Sedgemoor'],
+    districts: ['High Street','Church Lane','the Green','Turnpike Row','Mill Yard','Sheep Street','the Hall park','Chapel Street','the Workhouse lane','Canal Side'],
+    venues: [
+      { id: 'church', name: 'St Peter\'s church', kind: 'worship', who: 'all', p: 0.7 },
+      { id: 'chapel', name: 'the Methodist chapel', kind: 'worship', who: 'all', p: 0, faith: 'Methodist' },
+      { id: 'tavern', name: 'the coaching inn', kind: 'tavern', who: 'adults', p: 0.5 },
+      { id: 'market', name: 'market day on the High Street', kind: 'market', who: 'adults', p: 0.75 },
+      { id: 'court', name: 'the vestry and quarter sessions', kind: 'civic', who: 'men', p: 0.4 },
+      { id: 'school', name: 'the charity school', kind: 'school', who: 'kids', p: 0 }
+    ],
+    schoolName: 'the charity school', homemaker: 'Keeps house',
+    hobbies: ['cricket on the green','cards at the inn','country dances','reading the newspaper','hunting with the squire\'s hounds','cock-fighting','fishing the canal','needlework','singing in the church band','walking out on Sundays'],
+    goals: ['to rent a bigger farm from the squire','to see their children well married','to open a shop on the High Street','to buy shares in the canal','to become a master craftsman','to be made churchwarden','to save enough to keep out of the workhouse','to see London once'],
+    illnesses: ['smallpox','typhus','consumption','a putrid fever','the bloody flux','dropsy','a fall from a horse','a coaching accident','scarlet fever','a festering wound'],
+    infantCauses: ['convulsions','a summer fever','a weak start in life','smallpox as a baby'],
+    oldCauses: ['old age','apoplexy','a failing heart','a winter chill in old age'],
+    feudReasons: ['the enclosure of the common','a gate left open on the turnpike','an unpaid debt of five guineas','a broken engagement','poaching on the squire\'s land','a slander about a daughter','a quarrel at the election'],
+    groupNames: ['the {district} lads','the church band','the cricket club','the friendly society','the Methodist class meeting','the bell-ringers','the vestry men'],
+    hermitReasons: ['lost the family holding at enclosure and wants nothing more to do with anyone','came back from the wars and keeps to himself','was jilted at the altar and never got over it','is a philosopher who prefers books to people'] },
+  settings: { infantDeath: 0.17, childDeath: 0.035, adultDeath: 0.008, literacy: 0.45, schooling: 0.2, childbirthDeath: 0.012 },
+  places: { 'the Manor House': 'the Hall', "St Mary's church": "St Peter's church", 'the common fields': 'the enclosed fields', 'the common wood': 'the Hall woods', 'the Old Wood': 'the Hall woods', 'holding': 'farm' },
+  rename: { 'Lord of the manor': 'Squire', 'Lady of the manor': 'Squire\'s lady', 'Steward': 'Land agent', 'Reeve': 'Overseer of the poor', 'Parish priest': ['Vicar', { celibate: false }], 'Villein farmer': 'Tenant farmer', 'Cottar': 'Cottager',
+    'Herb-wife': 'Wise woman', 'Minstrel': 'Fiddler', 'Peddler': 'Pedlar', 'Alewife': ['Alehouse keeper', { sex: 'any' }], 'Weaver': 'Handloom weaver', 'Spinster': 'Spinner', 'Woodward': 'Gamekeeper', 'Cordwainer': 'Shoemaker', 'Swineherd': 'Pig keeper' },
+  add: [['Schoolmaster', 1, { min: 20, cls: 'mid', wp: 'shared', place: 'the charity school', lit: true, skill: 'learning' }],
+    ['Apothecary', 1, { min: 21, cls: 'mid', wp: 'own', place: 'apothecary shop', lit: true, skill: 'healing' }],
+    ['Attorney', 1, { sex: 'm', min: 21, cls: 'mid', wp: 'own', place: 'office', lit: true, skill: 'trade' }],
+    ['Coachman', 2, { sex: 'm', wp: 'shared', place: 'the coaching inn', skill: 'animals' }]]
+});
+const INDUSTRIAL_RENAME = { 'Homestead farmer': 'Tenant farmer', 'Farmhand': 'Farm labourer', 'Rancher': 'Grazier', 'Cowhand': 'Cowman', 'Orchard farmer': 'Market gardener',
+  'Miner': 'Coal miner', 'Mine foreman': 'Pit deputy', 'Mine owner': 'Colliery owner', 'Assayer': 'Colliery manager', 'Prospector': 'Navvy', 'Railroad worker': 'Railway labourer', 'Station agent': 'Stationmaster',
+  'Telegraph operator': 'Telegraph clerk', 'Livery keeper': 'Carrier', 'General store keeper': 'Grocer', 'Store clerk': 'Shop assistant', 'Saloon keeper': 'Publican', 'Bartender': 'Barman',
+  'Dance hall girl': 'Music-hall singer', 'Sheriff': 'Police inspector', 'Deputy': 'Police constable', 'Judge': 'Magistrate', 'Lawyer': 'Solicitor', 'Preacher': 'Minister', 'Schoolteacher': 'Schoolteacher',
+  'Stagecoach driver': 'Omnibus driver', 'Teamster': 'Carter', 'Sawmill hand': 'Mill hand', 'Boarding house keeper': 'Lodging-house keeper', 'Hotel keeper': 'Innkeeper', 'Gunsmith': 'Ironmonger',
+  'Trapper': 'Gamekeeper', 'Gambler': 'Bookmaker', 'Day laborer': 'Day labourer' };
+// workplaces of the frontier town, renamed for an English mill and pit town
+const INDUSTRIAL_PLACES = { "the sheriff's office": 'the police station', 'assay office': 'colliery office', 'funeral parlor': "undertaker's", 'general store': "grocer's shop", 'gun shop': "ironmonger's", 'homestead': 'tenant farm',
+  'livery stable': "carrier's yard", 'ranch': 'grazing farm', 'saloon': 'public house', 'the Silver Queen mine': 'Low Moor colliery', 'the courthouse': "the magistrates' court", 'the depot': 'the railway station',
+  'the railroad yard': 'the railway goods yard', 'the sawmill': 'the mill', 'the schoolhouse': 'the board school', 'the stage line': 'the omnibus company', 'the chapel': 'the parish church', 'dress shop': "dressmaker's", "the Cattlemen's Bank": 'the Union Bank' };
+const industrialEra = (label, icon, description, startYear, extra) => Object.assign({ label, icon, description, startYear, currency: 'pounds', immigrantMale: 0.52,
+  cultures: { victorianEnglish: 0.8, irish: 0.14, german: 0.06 }, faiths: { 'Church of England': 0.5, 'Methodist': 0.22, 'Catholic': 0.15, 'Baptist': 0.06, 'Not religious': 0.07 },
+  placeNames: ['Millbridge','Ashworth','Coldbeck','Hebden Moor','Thornley','Skelmanthorpe','Castleford Vale','Haworth Bridge','Low Moor','Blackstone Edge'],
+  districts: ['High Street','Chapel Street','the Terraces','Mill Row','Pit Lane','Irish Row','Station Road','the Park','Canal Side','Bank Top'], districtCulture: { 'Irish Row': 'irish' },
+  outskirts: 'a tumbledown cottage up on the moor',
+  venues: [
+    { id: 'church', name: 'the parish church', kind: 'worship', who: 'all', p: 0.45 },
+    { id: 'catholic', name: 'St Patrick\'s Catholic church', kind: 'worship', who: 'all', p: 0, faith: 'Catholic' },
+    { id: 'chapel', name: 'the Methodist chapel', kind: 'worship', who: 'all', p: 0, faith: 'Methodist' },
+    { id: 'saloon', name: 'the Railway Arms', kind: 'tavern', who: 'adults', p: 0.55 },
+    { id: 'store', name: 'the market hall', kind: 'market', who: 'adults', p: 0.8 },
+    { id: 'school', name: 'the board school', kind: 'school', who: 'kids', p: 0 },
+    { id: 'grange', name: 'the Mechanics\' Institute', kind: 'club', who: 'adults', p: 0.3 }
+  ],
+  schoolName: 'the board school', childWork: 'Works part-time at the mill', homemaker: 'Keeps house', retired: 'Too old for work' }, extra);
+makePeriod('victorian', 'frontier', {
+  era: industrialEra('Victorian mill town', '🏭', 'An English mill and pit town around 1860. Smoking chimneys, terraced streets, the railway, chapels, trade unions and the workhouse.', 1860, {
+    hobbies: ['brass band','pigeon racing','football','cricket','the music hall','allotment gardening','choir at chapel','fishing the canal','reading penny dreadfuls','whippet racing'],
+    goals: ['to rent a through terrace house','to see their children in better work','to keep out of the workhouse','to save in the co-operative','to become an overlooker at the mill','to open a corner shop','to see the sea at Blackpool','to get the vote'],
+    illnesses: ['cholera','typhoid','consumption','scarlet fever','diphtheria','a pit accident','a mill accident','pneumonia','smallpox','a fall from scaffolding'],
+    infantCauses: ['diarrhoea in the hot summer','whooping cough','convulsions','a weak start in life'],
+    oldCauses: ['old age','bronchitis in old age','a failing heart','apoplexy'],
+    feudReasons: ['a strike and those who broke it','a stolen allotment marrow','an unpaid debt at the corner shop','a slight at chapel','a broken engagement','a fight outside the pub','a dispute over a back yard wall'],
+    groupNames: ['the {district} lads','the brass band','the co-operative society','the chapel choir','the miners\' union lodge','the pigeon club','the temperance society'],
+    hermitReasons: ['lost his family to the cholera and lives alone','was blacklisted after the strike and keeps to himself','came back from the Crimea a changed man','prefers the moor to the town'] }),
+  settings: { infantDeath: 0.15, childDeath: 0.03, literacy: 0.65, schooling: 0.45, partnersNotMarried: 0.01 },
+  rename: INDUSTRIAL_RENAME, places: INDUSTRIAL_PLACES,
+  add: [['Mill overlooker', 2, { sex: 'm', min: 25, cls: 'mid', wp: 'shared', place: 'the mill', skill: 'craft' }], ['Weaver', 14, { min: 12, wp: 'shared', place: 'the mill', skill: 'craft' }]]
+});
+makePeriod('edwardian', 'frontier', {
+  era: industrialEra('Early 1900s town', '🚂', 'An English industrial town around 1912. Trams and the first motor cars, picture houses, suffragettes, trade unions, and war on the way.', 1912, {
+    cultures: { edwardianEnglish: 0.82, irish: 0.12, german: 0.06 },
+    faiths: { 'Church of England': 0.48, 'Methodist': 0.18, 'Catholic': 0.15, 'Baptist': 0.05, 'Not religious': 0.14 },
+    venues: [
+      { id: 'church', name: 'the parish church', kind: 'worship', who: 'all', p: 0.35 },
+      { id: 'catholic', name: 'St Patrick\'s Catholic church', kind: 'worship', who: 'all', p: 0, faith: 'Catholic' },
+      { id: 'chapel', name: 'the Methodist chapel', kind: 'worship', who: 'all', p: 0, faith: 'Methodist' },
+      { id: 'saloon', name: 'the Railway Arms', kind: 'tavern', who: 'adults', p: 0.5 },
+      { id: 'store', name: 'the market hall', kind: 'market', who: 'adults', p: 0.8 },
+      { id: 'school', name: 'the council school', kind: 'school', who: 'kids', p: 0 },
+      { id: 'grange', name: 'the picture house', kind: 'club', who: 'adults', p: 0.45 }
+    ],
+    schoolName: 'the council school', childWork: 'Runs errands after school',
+    hobbies: ['football','the picture house','cycling','brass band','pigeon racing','allotment gardening','dancing at the Palais','cricket','reading the Daily Mirror','rambling on the moors'],
+    goals: ['to rent a house with a bathroom','to see their children stay on at school','to get the vote','to own a bicycle','to become a foreman','to save in the Post Office','to emigrate to Canada','to open a fish and chip shop'],
+    illnesses: ['consumption','pneumonia','influenza','diphtheria','a mill accident','a pit accident','a tram accident','scarlet fever','a burst appendix','measles'],
+    infantCauses: ['diarrhoea in the hot summer','measles','whooping cough','a weak start in life'],
+    oldCauses: ['old age','bronchitis in old age','heart failure','a stroke'],
+    feudReasons: ['a strike and those who broke it','the vote for women','a motor car that ran over a dog','an unpaid debt at the corner shop','a fight outside the picture house','a broken engagement','a dispute over a back yard wall'],
+    groupNames: ['the {district} lads','the football club','the women\'s suffrage society','the co-operative guild','the union branch','the cycling club','the brass band'],
+    hermitReasons: ['lost his family to influenza and lives alone','was blacklisted after the strike','is a poet who cannot abide the noise of the mills','prefers the moor to the town'] }),
+  settings: { infantDeath: 0.1, childDeath: 0.02, adultDeath: 0.008, literacy: 0.95, schooling: 0.9, divorce: 0.003, partnersNotMarried: 0.01, birthsOutsideMarriage: 0.006, childbirthDeath: 0.005 },
+  places: Object.assign({}, INDUSTRIAL_PLACES, { 'the schoolhouse': 'the council school', 'the stage line': 'the motor-bus company', 'livery stable': 'garage' }),
+  rename: Object.assign({}, INDUSTRIAL_RENAME, { 'Telegraph operator': 'Telephone operator', 'Stagecoach driver': 'Motor-bus driver', 'Livery keeper': 'Garage keeper', 'Gunsmith': 'Motor mechanic', 'Dance hall girl': 'Picture-house usher' }),
+  add: [['Mill overlooker', 2, { sex: 'm', min: 25, cls: 'mid', wp: 'shared', place: 'the mill', skill: 'craft' }], ['Weaver', 14, { min: 14, wp: 'shared', place: 'the mill', skill: 'craft' }], ['Typist', 3, { sex: 'f', min: 16, cls: 'mid', wp: 'shared', place: 'the mill office', lit: true, skill: 'learning' }]]
+});

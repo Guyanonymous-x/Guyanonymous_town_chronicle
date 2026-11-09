@@ -242,6 +242,24 @@ textarea { font: inherit; padding: .4em .6em; border: 1px solid var(--line); bor
 .mk-made { margin-top: 1rem; } .mk-made dl.kv dd { white-space: normal; }
 .mk-before summary { cursor: pointer; color: var(--accent); margin: .4rem 0; } .mk-before p { font-family: var(--serif); line-height: 1.6; }
 
+/* V10: attitudes, who people are, photos */
+.att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 0 1rem; }
+.att-head { display: flex; gap: .6rem; align-items: center; justify-content: space-between; }
+.att-bar { position: relative; display: inline-block; width: 110px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #f0c9c4, #f3e7cf 50%, #cfe6d4); vertical-align: middle; }
+.att-bar.wide { width: 100%; height: 10px; margin: .3rem 0 .5rem; }
+.att-mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .5; }
+.att-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+.att-person .att-lab { display: inline-block; min-width: 13rem; color: var(--muted); }
+.avatar-photo { object-fit: cover; cursor: pointer; }
+.ph-strip { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .6rem; }
+.ph-thumb { margin: 0; width: 120px; cursor: pointer; } .ph-thumb img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.ph-thumb figcaption { font-size: .78rem; color: var(--muted); line-height: 1.25; margin-top: .2rem; }
+.ph-box { max-width: min(92vw, 900px); max-height: 92vh; overflow: auto; position: relative; text-align: left; }
+.ph-box img { max-width: 100%; max-height: 60vh; display: block; margin: 0 auto .6rem; border-radius: 6px; }
+.ph-close { position: absolute; top: .4rem; right: .4rem; }
+.ph-box { font-family: var(--sans); font-size: 1rem; padding: 1rem 1.2rem; }
+.pphoto { float: right; width: 34mm; height: 34mm; object-fit: cover; border-radius: 4px; margin: 0 0 4mm 4mm; }
+
 </style>
 </head>
 <body>
@@ -947,6 +965,172 @@ const ERAS = {
 };
 ERAS.dropped.occupations = ERAS.modern.occupations; // old-world jobs
 
+// ================= history periods (V10) =================
+// Each period copies a close setting (its "base"), so the economy, offices, crime and everything else work the same way,
+// then changes what differs: years, names, jobs (renamed, plus a few new ones), faiths, places, venues and wording.
+// Tables in other files fall back to the base setting unless the period has its own entry (see periodFill).
+function makePeriod(key, base, o) {
+  const B = ERAS[base];
+  const E = Object.assign({}, B, o.era, { key, base });
+  E.settings = Object.assign({}, B.settings, o.settings || {});
+  E.occupations = B.occupations.map(x => { const r = (o.rename || {})[x.name]; const pl = (o.places || {})[x.place];
+    if (!r && !pl) return x; const [name, extra] = Array.isArray(r) ? r : [r || x.name, null]; return Object.assign({}, x, { name }, pl ? { place: pl } : {}, extra || {}); });
+  const at = E.occupations.findIndex(x => x.apprentice || x.filler);
+  E.occupations.splice(at < 0 ? E.occupations.length : at, 0, ...(o.add || []).map(a => occ(a[0], a[1], a[2])));
+  ERAS[key] = E;
+  return E;
+}
+// Give every period the base setting's entry in a table, unless it has its own.
+function periodFill(...tables) { for (const [k, e] of Object.entries(ERAS)) if (e.base) for (const t of tables) if (t && t[e.base] !== undefined && t[k] === undefined) t[k] = t[e.base]; }
+// Lists whose items say which settings they belong to ({ eras: [...] }): a period joins wherever its base is listed.
+function periodFillLists(...lists) { for (const [k, e] of Object.entries(ERAS)) if (e.base) for (const list of lists) for (const it of list || []) if (Array.isArray(it.eras) && it.eras.includes(e.base) && !it.eras.includes(k)) it.eras.push(k); }
+const eraBase = W => (ERAS[W.era] && ERAS[W.era].base) || W.era;
+
+// names: Town Chronicle's lists combined with LifeWeaver's, plus names of each period
+const nameMix = (...ls) => [...new Set(ls.flat())];
+CULTURES.tudorEnglish = { label: 'English', language: 'English',
+  male: nameMix(['John','William','Thomas','Richard','Robert','Henry','Edward','George','Francis','Nicholas','Christopher','Edmund','Anthony','Walter','Hugh','Ralph','Roger','Humphrey','Lawrence','Matthew','James','Peter','Simon','Gilbert','Adam','Bartholomew','Ambrose','Giles','Miles','Toby','Jasper','Oliver','Philip','Arthur','Geoffrey'], ['Walter','Geoffrey','Hugh','Simon','Edmund','Gilbert','Nicholas','Adam']),
+  female: nameMix(['Alice','Agnes','Joan','Margaret','Elizabeth','Anne','Jane','Mary','Katherine','Isabel','Ellen','Margery','Dorothy','Frances','Bridget','Grace','Joyce','Susan','Judith','Eleanor','Cecily','Lettice','Thomasine','Winifred','Mabel','Rose','Amy','Barbara','Ursula','Bennet'], ['Matilda','Emma','Beatrice','Juliana','Edith','Maud','Avice']),
+  surnames: nameMix(CULTURES.medievalEnglish.surnames, ['Baker','Carter','Fletcher','Miller','Smith','Thatcher','Cooper','Ward','Atwood','Fuller','Mason','Shepherd','Webb','Draper','Hale','Turner','Wright','Brewer','Johnson','Robinson','Harris','Lambert','Parsons','Tyler','Godfrey','Pennington','Burrows','Fenwick','Hargreave','Wilde']) };
+CULTURES.georgianEnglish = { label: 'English', language: 'English',
+  male: nameMix(['John','William','Thomas','James','George','Richard','Joseph','Samuel','Robert','Charles','Edward','Henry','Benjamin','Daniel','Francis','Isaac','Jonathan','Matthew','Nathaniel','Stephen','Abraham','Josiah','Jeremiah','Peter','Philip','Edmund'], ['George','Charles','Edward','Joseph','Samuel','William','James','John','Henry','Walter']),
+  female: nameMix(['Mary','Elizabeth','Ann','Sarah','Jane','Hannah','Martha','Susannah','Margaret','Catherine','Frances','Charlotte','Rebecca','Esther','Lydia','Phoebe','Rachel','Betty','Molly','Hester','Amelia','Harriet','Maria','Caroline','Lucy','Dorothy'], ['Emily','Harriet','Charlotte','Martha','Eliza','Alice','Edith']),
+  surnames: nameMix(['Smith','Jones','Taylor','Brown','Wilson','Robinson','Wood','Thompson','Wright','Walker','White','Hughes','Holt','Barlow','Ashworth','Pickering','Dawson','Marsh'], ['Clarke','Hall','Green','Harrison','Mitchell','Parker','Bennett','Cooke','Turner','Lambert','Price','Ward','Fisher','Hammond','Kirby','Lowther','Pemberton','Radcliffe','Sutton','Whitaker','Yates','Ellison','Gregson','Higson']) };
+CULTURES.victorianEnglish = { label: 'English', language: 'English',
+  male: nameMix(['George','Albert','Arthur','Frederick','Charles','Edward','Harry','Alfred','Joseph','Walter','Samuel','Ernest','William','James','John','Henry'], ['Thomas','Herbert','Frank','Harold','Sidney','Percy','Reginald','Horace','Edwin','Wilfred','Ellis','Abel','Enoch','Jabez','Tom','Fred','Robert','Richard','Isaac','Benjamin']),
+  female: nameMix(['Mary','Elizabeth','Sarah','Ann','Emily','Florence','Ada','Harriet','Charlotte','Martha','Eliza','Victoria','Jane','Alice','Edith','Clara'], ['Annie','Ellen','Emma','Fanny','Louisa','Lucy','Minnie','Nellie','Rose','Hannah','Agnes','Amelia','Beatrice','Esther','Kate','Maud','Lizzie','Bertha','Lilian','Violet']),
+  surnames: nameMix(['Smith','Jones','Taylor','Brown','Wilson','Robinson','Wood','Thompson','Wright','Walker','White','Hughes','Holt','Barlow','Ashworth','Pickering','Dawson','Marsh'], ['Hall','Green','Clarke','Jackson','Lee','Harrison','Cooper','Shaw','Bailey','Hardcastle','Greenwood','Sutcliffe','Crabtree','Hepworth','Ackroyd','Butterworth','Ogden','Pilling','Rothwell','Haworth','Lumb','Whiteley']) };
+CULTURES.edwardianEnglish = { label: 'English', language: 'English',
+  male: nameMix(CULTURES.victorianEnglish.male, ['Stanley','Leonard','Cyril','Norman','Cecil','Leslie','Douglas','Ronald','Dennis','Eric','Kenneth','Victor','Clifford','Bernard','Jack','Joe']),
+  female: nameMix(CULTURES.victorianEnglish.female, ['Doris','Dorothy','Gladys','Elsie','Ivy','Hilda','Irene','Mabel','Winifred','Vera','Phyllis','Marjorie','Kathleen','Lily','Evelyn','Muriel']),
+  surnames: CULTURES.victorianEnglish.surnames };
+
+makePeriod('tudor', 'medieval', {
+  era: { label: 'Tudor market town', icon: '🌹',
+    description: 'An English market town around 1560, in the age of the Tudors. The old faith gives way to the new, wool and cloth bring money, and the poor laws begin.',
+    startYear: 1560, cultures: { tudorEnglish: 1 }, faiths: { 'Church of England': 0.82, 'Catholic (in secret)': 0.12, 'Puritan': 0.06 },
+    placeNames: ['Ashby St Ledgers','Market Wenlock','Thornbury','Chipping Hollow','Kingsbridge','Woolhampton','Stowe Parva','Brackley Cross','Long Melford','Haverhill'],
+    districts: ['Church Row','Mill Lane','the Green','Smithy End','Market Place','Sheep Street','the Manor Close','Tenter Lane','the Almshouses','Orchard Way'],
+    venues: [
+      { id: 'church', name: 'the parish church', kind: 'worship', who: 'all', p: 0.9 },
+      { id: 'tavern', name: 'the Swan inn', kind: 'tavern', who: 'adults', p: 0.5 },
+      { id: 'market', name: 'market day in the Market Place', kind: 'market', who: 'adults', p: 0.75 },
+      { id: 'court', name: 'the manor court and vestry', kind: 'civic', who: 'men', p: 0.45 },
+      { id: 'well', name: 'the town pump', kind: 'gathering', who: 'women', p: 0.55 },
+      { id: 'school', name: 'the free grammar school', kind: 'school', who: 'kids', p: 0 }
+    ],
+    schoolName: 'the free grammar school',
+    hobbies: ['archery at the butts','bowls on the green','cards and dice','singing ballads','dancing at May Day','bear-baiting at the fair','playing the lute','football on Shrove Tuesday','embroidery','telling tales by the fire'],
+    goals: ['to buy the freehold of their land','to see their children well married','to become a master of their craft','to rise to be a churchwarden','to send a son to the grammar school','to own a share in a wool ship','to leave money for the poor in their will','to build a house with glass windows'],
+    illnesses: ['the sweating sickness','the plague','smallpox','a fever','the bloody flux','consumption','a festering wound','a winter cough','a fall from a horse','drowning in the mill race'],
+    feudReasons: ['a hedge planted across the common','a quarrel over the new prayer book','an unpaid debt of a crown','a broken betrothal','a cow that strayed into the wheat','an insult in the alehouse','a disputed will'],
+    groupNames: ['the {district} lads','the bell-ringers','the clothiers\' company','the church-ale brewers','the archers of the butts','the May Day dancers','the vestry men'],
+    hermitReasons: ['lost everything when the abbey was closed','never cared for company after the sweating sickness took their family','is said to be a secret Catholic who keeps to themselves','fell out with the whole parish over a will'] },
+  settings: { infantDeath: 0.2, adultDeath: 0.0085, literacy: 0.15, schooling: 0.06 },
+  rename: { 'Villein farmer': 'Husbandman', 'Cottar': 'Cottager', 'Parish priest': ['Parson', { celibate: false }], 'Herb-wife': 'Cunning woman', 'Minstrel': 'Fiddler', 'Peddler': 'Chapman', 'Cordwainer': 'Shoemaker', 'Woodward': 'Woodreeve' },
+  add: [['Schoolmaster', 1, { sex: 'm', min: 20, cls: 'mid', wp: 'shared', place: 'the grammar school', lit: true, skill: 'learning' }],
+    ['Clothier', 2, { min: 20, cls: 'mid', wp: 'own', place: 'cloth hall', skill: 'trade', uses: ['cloth'] }],
+    ['Glover', 1, { wp: 'own', place: 'glove shop', skill: 'craft', uses: ['leather'] }]]
+});
+makePeriod('georgian', 'medieval', {
+  era: { label: 'Georgian market town', icon: '🎩',
+    description: 'An English market town around 1780. The squire and the vicar, enclosure of the open fields, coaching inns, turnpike roads and the first mills.',
+    startYear: 1780, cultures: { georgianEnglish: 0.92, irish: 0.08 }, faiths: { 'Church of England': 0.74, 'Methodist': 0.16, 'Baptist': 0.04, 'Catholic': 0.04, 'Quaker': 0.02 },
+    placeNames: ['Market Harborough Parva','Ashby Magna','Stamford Cross','Wellbury','Coldbrook','Fairford','Newbold','Hartington','Kirkby Lonsdale','Sedgemoor'],
+    districts: ['High Street','Church Lane','the Green','Turnpike Row','Mill Yard','Sheep Street','the Hall park','Chapel Street','the Workhouse lane','Canal Side'],
+    venues: [
+      { id: 'church', name: 'St Peter\'s church', kind: 'worship', who: 'all', p: 0.7 },
+      { id: 'chapel', name: 'the Methodist chapel', kind: 'worship', who: 'all', p: 0, faith: 'Methodist' },
+      { id: 'tavern', name: 'the coaching inn', kind: 'tavern', who: 'adults', p: 0.5 },
+      { id: 'market', name: 'market day on the High Street', kind: 'market', who: 'adults', p: 0.75 },
+      { id: 'court', name: 'the vestry and quarter sessions', kind: 'civic', who: 'men', p: 0.4 },
+      { id: 'school', name: 'the charity school', kind: 'school', who: 'kids', p: 0 }
+    ],
+    schoolName: 'the charity school', homemaker: 'Keeps house',
+    hobbies: ['cricket on the green','cards at the inn','country dances','reading the newspaper','hunting with the squire\'s hounds','cock-fighting','fishing the canal','needlework','singing in the church band','walking out on Sundays'],
+    goals: ['to rent a bigger farm from the squire','to see their children well married','to open a shop on the High Street','to buy shares in the canal','to become a master craftsman','to be made churchwarden','to save enough to keep out of the workhouse','to see London once'],
+    illnesses: ['smallpox','typhus','consumption','a putrid fever','the bloody flux','dropsy','a fall from a horse','a coaching accident','scarlet fever','a festering wound'],
+    infantCauses: ['convulsions','a summer fever','a weak start in life','smallpox as a baby'],
+    oldCauses: ['old age','apoplexy','a failing heart','a winter chill in old age'],
+    feudReasons: ['the enclosure of the common','a gate left open on the turnpike','an unpaid debt of five guineas','a broken engagement','poaching on the squire\'s land','a slander about a daughter','a quarrel at the election'],
+    groupNames: ['the {district} lads','the church band','the cricket club','the friendly society','the Methodist class meeting','the bell-ringers','the vestry men'],
+    hermitReasons: ['lost the family holding at enclosure and wants nothing more to do with anyone','came back from the wars and keeps to himself','was jilted at the altar and never got over it','is a philosopher who prefers books to people'] },
+  settings: { infantDeath: 0.17, childDeath: 0.035, adultDeath: 0.008, literacy: 0.45, schooling: 0.2, childbirthDeath: 0.012 },
+  places: { 'the Manor House': 'the Hall', "St Mary's church": "St Peter's church", 'the common fields': 'the enclosed fields', 'the common wood': 'the Hall woods', 'the Old Wood': 'the Hall woods', 'holding': 'farm' },
+  rename: { 'Lord of the manor': 'Squire', 'Lady of the manor': 'Squire\'s lady', 'Steward': 'Land agent', 'Reeve': 'Overseer of the poor', 'Parish priest': ['Vicar', { celibate: false }], 'Villein farmer': 'Tenant farmer', 'Cottar': 'Cottager',
+    'Herb-wife': 'Wise woman', 'Minstrel': 'Fiddler', 'Peddler': 'Pedlar', 'Alewife': ['Alehouse keeper', { sex: 'any' }], 'Weaver': 'Handloom weaver', 'Spinster': 'Spinner', 'Woodward': 'Gamekeeper', 'Cordwainer': 'Shoemaker', 'Swineherd': 'Pig keeper' },
+  add: [['Schoolmaster', 1, { min: 20, cls: 'mid', wp: 'shared', place: 'the charity school', lit: true, skill: 'learning' }],
+    ['Apothecary', 1, { min: 21, cls: 'mid', wp: 'own', place: 'apothecary shop', lit: true, skill: 'healing' }],
+    ['Attorney', 1, { sex: 'm', min: 21, cls: 'mid', wp: 'own', place: 'office', lit: true, skill: 'trade' }],
+    ['Coachman', 2, { sex: 'm', wp: 'shared', place: 'the coaching inn', skill: 'animals' }]]
+});
+const INDUSTRIAL_RENAME = { 'Homestead farmer': 'Tenant farmer', 'Farmhand': 'Farm labourer', 'Rancher': 'Grazier', 'Cowhand': 'Cowman', 'Orchard farmer': 'Market gardener',
+  'Miner': 'Coal miner', 'Mine foreman': 'Pit deputy', 'Mine owner': 'Colliery owner', 'Assayer': 'Colliery manager', 'Prospector': 'Navvy', 'Railroad worker': 'Railway labourer', 'Station agent': 'Stationmaster',
+  'Telegraph operator': 'Telegraph clerk', 'Livery keeper': 'Carrier', 'General store keeper': 'Grocer', 'Store clerk': 'Shop assistant', 'Saloon keeper': 'Publican', 'Bartender': 'Barman',
+  'Dance hall girl': 'Music-hall singer', 'Sheriff': 'Police inspector', 'Deputy': 'Police constable', 'Judge': 'Magistrate', 'Lawyer': 'Solicitor', 'Preacher': 'Minister', 'Schoolteacher': 'Schoolteacher',
+  'Stagecoach driver': 'Omnibus driver', 'Teamster': 'Carter', 'Sawmill hand': 'Mill hand', 'Boarding house keeper': 'Lodging-house keeper', 'Hotel keeper': 'Innkeeper', 'Gunsmith': 'Ironmonger',
+  'Trapper': 'Gamekeeper', 'Gambler': 'Bookmaker', 'Day laborer': 'Day labourer' };
+// workplaces of the frontier town, renamed for an English mill and pit town
+const INDUSTRIAL_PLACES = { "the sheriff's office": 'the police station', 'assay office': 'colliery office', 'funeral parlor': "undertaker's", 'general store': "grocer's shop", 'gun shop': "ironmonger's", 'homestead': 'tenant farm',
+  'livery stable': "carrier's yard", 'ranch': 'grazing farm', 'saloon': 'public house', 'the Silver Queen mine': 'Low Moor colliery', 'the courthouse': "the magistrates' court", 'the depot': 'the railway station',
+  'the railroad yard': 'the railway goods yard', 'the sawmill': 'the mill', 'the schoolhouse': 'the board school', 'the stage line': 'the omnibus company', 'the chapel': 'the parish church', 'dress shop': "dressmaker's", "the Cattlemen's Bank": 'the Union Bank' };
+const industrialEra = (label, icon, description, startYear, extra) => Object.assign({ label, icon, description, startYear, currency: 'pounds', immigrantMale: 0.52,
+  cultures: { victorianEnglish: 0.8, irish: 0.14, german: 0.06 }, faiths: { 'Church of England': 0.5, 'Methodist': 0.22, 'Catholic': 0.15, 'Baptist': 0.06, 'Not religious': 0.07 },
+  placeNames: ['Millbridge','Ashworth','Coldbeck','Hebden Moor','Thornley','Skelmanthorpe','Castleford Vale','Haworth Bridge','Low Moor','Blackstone Edge'],
+  districts: ['High Street','Chapel Street','the Terraces','Mill Row','Pit Lane','Irish Row','Station Road','the Park','Canal Side','Bank Top'], districtCulture: { 'Irish Row': 'irish' },
+  outskirts: 'a tumbledown cottage up on the moor',
+  venues: [
+    { id: 'church', name: 'the parish church', kind: 'worship', who: 'all', p: 0.45 },
+    { id: 'catholic', name: 'St Patrick\'s Catholic church', kind: 'worship', who: 'all', p: 0, faith: 'Catholic' },
+    { id: 'chapel', name: 'the Methodist chapel', kind: 'worship', who: 'all', p: 0, faith: 'Methodist' },
+    { id: 'saloon', name: 'the Railway Arms', kind: 'tavern', who: 'adults', p: 0.55 },
+    { id: 'store', name: 'the market hall', kind: 'market', who: 'adults', p: 0.8 },
+    { id: 'school', name: 'the board school', kind: 'school', who: 'kids', p: 0 },
+    { id: 'grange', name: 'the Mechanics\' Institute', kind: 'club', who: 'adults', p: 0.3 }
+  ],
+  schoolName: 'the board school', childWork: 'Works part-time at the mill', homemaker: 'Keeps house', retired: 'Too old for work' }, extra);
+makePeriod('victorian', 'frontier', {
+  era: industrialEra('Victorian mill town', '🏭', 'An English mill and pit town around 1860. Smoking chimneys, terraced streets, the railway, chapels, trade unions and the workhouse.', 1860, {
+    hobbies: ['brass band','pigeon racing','football','cricket','the music hall','allotment gardening','choir at chapel','fishing the canal','reading penny dreadfuls','whippet racing'],
+    goals: ['to rent a through terrace house','to see their children in better work','to keep out of the workhouse','to save in the co-operative','to become an overlooker at the mill','to open a corner shop','to see the sea at Blackpool','to get the vote'],
+    illnesses: ['cholera','typhoid','consumption','scarlet fever','diphtheria','a pit accident','a mill accident','pneumonia','smallpox','a fall from scaffolding'],
+    infantCauses: ['diarrhoea in the hot summer','whooping cough','convulsions','a weak start in life'],
+    oldCauses: ['old age','bronchitis in old age','a failing heart','apoplexy'],
+    feudReasons: ['a strike and those who broke it','a stolen allotment marrow','an unpaid debt at the corner shop','a slight at chapel','a broken engagement','a fight outside the pub','a dispute over a back yard wall'],
+    groupNames: ['the {district} lads','the brass band','the co-operative society','the chapel choir','the miners\' union lodge','the pigeon club','the temperance society'],
+    hermitReasons: ['lost his family to the cholera and lives alone','was blacklisted after the strike and keeps to himself','came back from the Crimea a changed man','prefers the moor to the town'] }),
+  settings: { infantDeath: 0.15, childDeath: 0.03, literacy: 0.65, schooling: 0.45, partnersNotMarried: 0.01 },
+  rename: INDUSTRIAL_RENAME, places: INDUSTRIAL_PLACES,
+  add: [['Mill overlooker', 2, { sex: 'm', min: 25, cls: 'mid', wp: 'shared', place: 'the mill', skill: 'craft' }], ['Weaver', 14, { min: 12, wp: 'shared', place: 'the mill', skill: 'craft' }]]
+});
+makePeriod('edwardian', 'frontier', {
+  era: industrialEra('Early 1900s town', '🚂', 'An English industrial town around 1912. Trams and the first motor cars, picture houses, suffragettes, trade unions, and war on the way.', 1912, {
+    cultures: { edwardianEnglish: 0.82, irish: 0.12, german: 0.06 },
+    faiths: { 'Church of England': 0.48, 'Methodist': 0.18, 'Catholic': 0.15, 'Baptist': 0.05, 'Not religious': 0.14 },
+    venues: [
+      { id: 'church', name: 'the parish church', kind: 'worship', who: 'all', p: 0.35 },
+      { id: 'catholic', name: 'St Patrick\'s Catholic church', kind: 'worship', who: 'all', p: 0, faith: 'Catholic' },
+      { id: 'chapel', name: 'the Methodist chapel', kind: 'worship', who: 'all', p: 0, faith: 'Methodist' },
+      { id: 'saloon', name: 'the Railway Arms', kind: 'tavern', who: 'adults', p: 0.5 },
+      { id: 'store', name: 'the market hall', kind: 'market', who: 'adults', p: 0.8 },
+      { id: 'school', name: 'the council school', kind: 'school', who: 'kids', p: 0 },
+      { id: 'grange', name: 'the picture house', kind: 'club', who: 'adults', p: 0.45 }
+    ],
+    schoolName: 'the council school', childWork: 'Runs errands after school',
+    hobbies: ['football','the picture house','cycling','brass band','pigeon racing','allotment gardening','dancing at the Palais','cricket','reading the Daily Mirror','rambling on the moors'],
+    goals: ['to rent a house with a bathroom','to see their children stay on at school','to get the vote','to own a bicycle','to become a foreman','to save in the Post Office','to emigrate to Canada','to open a fish and chip shop'],
+    illnesses: ['consumption','pneumonia','influenza','diphtheria','a mill accident','a pit accident','a tram accident','scarlet fever','a burst appendix','measles'],
+    infantCauses: ['diarrhoea in the hot summer','measles','whooping cough','a weak start in life'],
+    oldCauses: ['old age','bronchitis in old age','heart failure','a stroke'],
+    feudReasons: ['a strike and those who broke it','the vote for women','a motor car that ran over a dog','an unpaid debt at the corner shop','a fight outside the picture house','a broken engagement','a dispute over a back yard wall'],
+    groupNames: ['the {district} lads','the football club','the women\'s suffrage society','the co-operative guild','the union branch','the cycling club','the brass band'],
+    hermitReasons: ['lost his family to influenza and lives alone','was blacklisted after the strike','is a poet who cannot abide the noise of the mills','prefers the moor to the town'] }),
+  settings: { infantDeath: 0.1, childDeath: 0.02, adultDeath: 0.008, literacy: 0.95, schooling: 0.9, divorce: 0.003, partnersNotMarried: 0.01, birthsOutsideMarriage: 0.006, childbirthDeath: 0.005 },
+  places: Object.assign({}, INDUSTRIAL_PLACES, { 'the schoolhouse': 'the council school', 'the stage line': 'the motor-bus company', 'livery stable': 'garage' }),
+  rename: Object.assign({}, INDUSTRIAL_RENAME, { 'Telegraph operator': 'Telephone operator', 'Stagecoach driver': 'Motor-bus driver', 'Livery keeper': 'Garage keeper', 'Gunsmith': 'Motor mechanic', 'Dance hall girl': 'Picture-house usher' }),
+  add: [['Mill overlooker', 2, { sex: 'm', min: 25, cls: 'mid', wp: 'shared', place: 'the mill', skill: 'craft' }], ['Weaver', 14, { min: 14, wp: 'shared', place: 'the mill', skill: 'craft' }], ['Typist', 3, { sex: 'f', min: 16, cls: 'mid', wp: 'shared', place: 'the mill office', lit: true, skill: 'learning' }]]
+});
+
 // ================= Town Chronicle engine (no page code here) =================
 const FORMAT = 'town-chronicle';
 const FORMAT_VERSION = 3;
@@ -980,10 +1164,14 @@ function ageOf(p, y) { return y - p.born; }
 function isAlive(p) { return p.died == null; }
 function isResident(p) { return p.status === 'resident'; }
 function eraOf(W) { return ERAS[W.era]; }
-function heShe(p) { return p.sex === 'm' ? 'he' : 'she'; }
-function hisHer(p) { return p.sex === 'm' ? 'his' : 'her'; }
-function himHer(p) { return p.sex === 'm' ? 'him' : 'her'; }
-function rel3(p, m, f, n) { return p.sex === 'm' ? m : (p.sex === 'f' ? f : n); }
+// Words follow the gender a person lives as (V10): body sex unless they have come out as something else.
+// Non-binary people are called by their name rather than "they", so every sentence still reads correctly.
+function genderOf(p) { return p.gender || (p.sex === 'm' ? 'man' : 'woman'); }
+function heShe(p) { const g = genderOf(p); return g === 'man' ? 'he' : g === 'woman' ? 'she' : p.first; }
+function hisHer(p) { const g = genderOf(p); return g === 'man' ? 'his' : g === 'woman' ? 'her' : `${p.first}'s`; }
+function himHer(p) { const g = genderOf(p); return g === 'man' ? 'him' : g === 'woman' ? 'her' : p.first; }
+function himHerSelf(p) { const g = genderOf(p); return g === 'man' ? 'himself' : g === 'woman' ? 'herself' : 'themself'; }
+function rel3(p, m, f, n) { const g = genderOf(p); return g === 'man' ? m : g === 'woman' ? f : (n ?? (p.sex === 'm' ? m : f)); }
 function ordinal(n) { return ['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth','eleventh','twelfth'][n - 1] || (n + 'th'); }
 function fullName(p) { return p ? `${p.first} ${p.last}` : 'unknown'; }
 
@@ -1228,6 +1416,7 @@ function marryFactor(W, p, y) {
   return f;
 }
 function wantsSameSex(W, rng, p) {
+  if (p.so && !p.so.out) return false; // V10: someone still hiding who they love looks for the 'expected' partner
   if (!W.settings.sameSexCouples) return false;
   if (p.orientation === 'gay') return true;
   if (p.orientation === 'bisexual') return rng.chance(0.35);
@@ -2464,6 +2653,7 @@ function upgradeWorld(W) {
   socUpgrade(W);
   if (!W.censusDetail || !W.censusDetail[W.year]) takeCensus(W);
   W.version = Math.max(W.version || 1, 4);
+  if (typeof livesUpgrade === 'function') livesUpgrade(W); // V10: attitudes and inner lives
 }
 function rng0(n) { let x = (n * 2654435761) >>> 0; x ^= x >>> 13; return x; }
 function currentOcc(W, p) {
@@ -2498,6 +2688,7 @@ function advanceYear(W) {
     seasonBirths(W, rng, y, s, R);
   }
   W._s = null;
+  if (typeof livesYear === 'function') livesYear(W, rng, y, R); // V10: inner lives, attitudes, lasting injuries
   yearRomance(W, rng, y, R);
   yearSocial(W, rng, y, R);
   yearGossip(W, rng, y, R);
@@ -2570,7 +2761,7 @@ function seasonHealth(W, rng, y, s, R, outbreak) {
     else if (a >= 70) risk = { k: 'elder', r: 0.03 + (a - 70) * 0.004 };
     else if (o) risk = { k: /miner|mining/i.test(o.name) ? 'mining' : (INJURIES[o.skill] ? o.skill : 'labor'), r: (/miner|mining/i.test(o.name) ? 0.12 : INJURY_RISK[o.skill] || 0.02) };
     else risk = { k: 'labor', r: 0.012 };
-    risk.r *= S.accidents * ((p.mind && p.mind.drink > 50) ? 1.8 : 1);
+    risk.r *= S.accidents * ((p.mind && p.mind.drink > 50) ? 1.8 : 1) * (typeof injuryProneness === 'function' ? injuryProneness(p) : 1); // V10: some lasting injuries make people more accident-prone
     if (rng.chance(risk.r / 4)) injure(W, rng, p, y, s, R, risk.k);
     if (rng.chance((a >= 16 ? (W.era === 'modern' ? 0.006 : 0.003) : 0.001) / 4 * S.accidents)) injure(W, rng, p, y, s, R, 'travel');
     if (!isAlive(p)) continue;
@@ -2634,7 +2825,7 @@ function injure(W, rng, p, y, s, R, kind) {
     const m = mindOf(p); m.yearStress += 20; m.trauma = clamp(m.trauma + 8, 0, 100);
     p.health = Math.round(clamp(p.health - rng.int(4, 15), 1, 100));
     let lasting = null;
-    if (rng.chance(0.28 * (1 - med * 0.5))) { lasting = rng.pick(LASTING.filter(l => !p.conditions.includes(l))); if (lasting) { p.conditions.push(lasting); for (const k of Object.keys(p.skills || {})) if (/labor|craft|fighting|farming/.test(k)) p.skills[k] = Math.max(0, p.skills[k] - rng.int(3, 12)); } }
+    if (rng.chance(0.28 * (1 - med * 0.5))) { lasting = (typeof severeInjury === 'function' && severeInjury(W, rng, p)) || rng.pick(LASTING.filter(l => !p.conditions.includes(l))); if (lasting) { p.conditions.push(lasting); for (const k of Object.keys(p.skills || {})) if (/labor|craft|fighting|farming/.test(k)) p.skills[k] = Math.max(0, p.skills[k] - rng.int(3, 12)); } }
     addEvent(W, p, y, 'injury', `Badly hurt: ${what}${lasting ? `, leaving ${himHer(p)} with ${lasting}` : ''}.`, blame ? { why: `@${blame.id} was to blame.` } : null);
     ripple(W, rng, p, y, 'worry', 18, `Worried over {who}, badly hurt (${what}).`);
     if (blame) blameFor(W, rng, blame, p, y, what, false);
@@ -2699,6 +2890,9 @@ function afterDeath(W, rng, p, y, cause, kind) {
 function seasonBirths(W, rng, y, s, R) {
   const S = W.settings;
   const people = lives(W);
+  // a woman locked up while expecting gives birth there, and the baby goes home to the father, or else to her old home or her parents
+  // (V10 fix: before, the birth waited until she was let out, sometimes years later)
+  for (const w of Object.values(W.people)) if (w.status === 'prison' && w.preg && isAlive(w) && w.preg.y * 4 + w.preg.s <= y * 4 + s) prisonBirth(W, rng, w, y, s, R);
   for (const w of people) {
     if (w.sex !== 'f' || !isAlive(w)) continue;
     const a = ageOf(w, y);
@@ -2749,10 +2943,20 @@ function seasonBirths(W, rng, y, s, R) {
       w.lastBirth = y * 4 + s - 2;
     } else if (father && !secret && w.spouse !== father.id) {
       // an unmarried pregnancy: news travels
-      addEvent(W, w, y, 'pregnant', `Found ${himHer(w)}self expecting a child by @${father.id}, though they were not married.`);
+      addEvent(W, w, y, 'pregnant', `Found ${himHerSelf(w)} expecting a child by @${father.id}, though they were not married.`);
       addEvent(W, father, y, 'pregnant', `@${w.id} is expecting his child.`);
     }
   }
+}
+function prisonBirth(W, rng, w, y, s, R) {
+  const grown = h => h && h.members.some(id => { const q = W.people[id]; return q && isAlive(q) && q.status === 'resident' && ageOf(q, y) >= 16; });
+  const dad = w.preg.father ? W.people[w.preg.father] : null;
+  const homes = [dad && isAlive(dad) && dad.status === 'resident' ? W.households[dad.household] : null, W.households[w.prevHousehold],
+    ...[w.mother, w.father].map(id => W.people[id]).filter(q => q && isAlive(q) && q.status === 'resident').map(q => W.households[q.household])];
+  const home = homes.find(grown); if (!home) return; // nobody to take the baby yet: it waits
+  const was = w.household; w.household = home.id;
+  try { giveBirth(W, rng, w, y, s, R); } finally { w.household = was; home.members = home.members.filter(id => id !== w.id || was === home.id); }
+  addEvent(W, w, y, 'child_born', `Gave birth while locked up; the baby went to ${home.name}.`);
 }
 function giveBirth(W, rng, w, y, s, R) {
   const S = W.settings;
@@ -3159,6 +3363,7 @@ function chooseJob(W, rng, p, y, slots) {
   const cands = [];
   for (const o of slots.occs) {
     if (o.apprentice || o.spouseOf || isOfficeOcc(W, o.id)) continue;
+    if (typeof canDoWork === 'function' && !canDoWork(p, o)) continue; // V10: work their injuries no longer allow
     const open = slots.want[o.id] - (slots.have[o.id] || 0);
     if (open <= 0.3) continue;
     if (a < o.min || (o.max && a > o.max)) continue;
@@ -3176,6 +3381,7 @@ function chooseJob(W, rng, p, y, slots) {
   return o;
 }
 function startJob(W, rng, p, o, y, why, R) {
+  if (typeof canDoWork === 'function' && !canDoWork(p, o)) return; // V10: work their lasting injuries no longer allow
   if (p.workplace) leaveJob(W, rng, p, y, 'moved on');
   const was = p.occupation;
   p.occId = o.id; p.occupation = o.name; p.jobSince = y;
@@ -3540,6 +3746,15 @@ function personYearSummary(W, p, y) {
 }
 
 if (typeof module !== 'undefined') Object.assign(module.exports, { advanceYear, upgradeWorld, personYearSummary, SEASONS, griefLoad });
+
+// ---------- history periods (V10): their own defaults where they differ, else their base setting's ----------
+EXTRA_DEFAULTS.tudor = Object.assign({}, EXTRA_DEFAULTS.medieval, { arrivals: 8, medicine: 0.06, outbreaks: 0.26 });
+EXTRA_DEFAULTS.georgian = Object.assign({}, EXTRA_DEFAULTS.medieval, { arrivals: 12, leaving: 0.03, medicine: 0.1, outbreaks: 0.2 });
+EXTRA_DEFAULTS.victorian = Object.assign({}, EXTRA_DEFAULTS.frontier, { arrivals: 22, leaving: 0.05, familiesLeaving: 0.015, medicine: 0.25, outbreaks: 0.22 });
+EXTRA_DEFAULTS.edwardian = Object.assign({}, EXTRA_DEFAULTS.frontier, { arrivals: 18, leaving: 0.05, familiesLeaving: 0.015, medicine: 0.45, outbreaks: 0.14 });
+periodFill(EXTRA_DEFAULTS);
+for (const [k, e] of Object.entries(ERAS)) if (e.base) e.settings = Object.assign({}, EXTRA_DEFAULTS[k], e.settings); // periods were copied before their base got these
+periodFillLists(DISEASES);
 
 // ================= Stage 2b: weather, harvests, supply chains, events, money and property =================
 // All amounts are starting estimates for each setting, not historical fact.
@@ -4096,6 +4311,36 @@ function econSummary(W, y, Y) {
 
 if (typeof module !== 'undefined') Object.assign(module.exports, { econStart, econUpgrade, ECON });
 
+// ---------- history periods (V10) ----------
+ECON.victorian = Object.assign({}, ECON.frontier, { unit: 'pounds', homes: [['a cellar dwelling', 25], ['a back-to-back house', 200], ['a terraced house', 900], ['a villa on the park', 6000]], ownChance: 0.2 });
+ECON.edwardian = Object.assign({}, ECON.frontier, { unit: 'pounds', homes: [['a cellar dwelling', 25], ['a back-to-back house', 200], ['a through terrace with a yard', 900], ['a villa on the park', 6000]], ownChance: 0.25 });
+ECON.georgian = Object.assign({}, ECON.medieval, { homes: [['a one-room cottage', 500], ['a cottage and garden', 1400], ['a brick townhouse', 4000], ['the Hall', 30000]] });
+ECON.tudor = Object.assign({}, ECON.medieval, { homes: [['a one-room cottage', 500], ['a cottage and croft', 1400], ['a timber-framed house with a chimney', 4000], ['the manor house', 30000]] });
+PESTS.victorian = PESTS.edwardian = [['grain', 'the wheat rust'], ['livestock', 'foot-and-mouth in the herds'], ['apples', 'apple scab'], ['ore', 'the coal seam running thin'], ['timber', 'a wet year at the timber yard']];
+EVENTS.tudor = [
+  { k: 'fire', p: 0.05, name: 'a great fire in the Market Place' }, { k: 'flood', p: 0.04, name: 'the river flooding' }, { k: 'storm', p: 0.05, name: 'a great storm' },
+  { k: 'war', p: 0.035, name: 'the Queen\'s war against Spain', what: 'the trained bands' }, { k: 'raid', p: 0.02, name: 'a band of sturdy beggars' },
+  { k: 'tax', p: 0.06, name: 'a new subsidy granted to the Crown' }, { k: 'boom', p: 0.04, name: 'the cloth trade booming' }, { k: 'bust', p: 0.03, name: 'the cloth trade with Antwerp failing' },
+  { k: 'bumper', p: 0.05, name: 'a bumper harvest' }
+];
+EVENTS.georgian = [
+  { k: 'fire', p: 0.04, name: 'a fire at the coaching inn' }, { k: 'flood', p: 0.04, name: 'the river flooding' }, { k: 'storm', p: 0.05, name: 'a great storm' },
+  { k: 'war', p: 0.04, name: 'the war with France', what: 'the militia' }, { k: 'raid', p: 0.02, name: 'a gang of highwaymen' },
+  { k: 'tax', p: 0.05, name: 'a new tax on windows and candles' }, { k: 'boom', p: 0.05, name: 'the canal reaching town' }, { k: 'boom', p: 0.03, name: 'a cotton mill opening' },
+  { k: 'bust', p: 0.03, name: 'the price of corn collapsing' }, { k: 'bumper', p: 0.05, name: 'a bumper harvest' }
+];
+EVENTS.victorian = [
+  { k: 'fire', p: 0.06, name: 'a fire at the mill' }, { k: 'flood', p: 0.04, name: 'the river bursting its banks' }, { k: 'storm', p: 0.05, name: 'a great gale' },
+  { k: 'raid', p: 0.02, name: 'a gang of garotters' }, { k: 'boom', p: 0.05, name: 'a new mill opening' }, { k: 'boom', p: 0.04, name: 'a rich new coal seam' },
+  { k: 'bust', p: 0.05, name: 'the cotton famine' }, { k: 'bumper', p: 0.04, name: 'a bumper harvest' }, { k: 'war', p: 0.015, name: 'the war in the Crimea', what: 'the regiment' }
+];
+EVENTS.edwardian = [
+  { k: 'fire', p: 0.05, name: 'a fire at the mill' }, { k: 'flood', p: 0.04, name: 'the river bursting its banks' }, { k: 'storm', p: 0.05, name: 'a great gale' },
+  { k: 'raid', p: 0.015, name: 'a gang of burglars' }, { k: 'boom', p: 0.05, name: 'a new factory opening' }, { k: 'boom', p: 0.03, name: 'the tramway reaching town' },
+  { k: 'bust', p: 0.05, name: 'a long strike at the pit' }, { k: 'bumper', p: 0.04, name: 'a bumper harvest' }, { k: 'war', p: 0.03, name: 'the Great War', what: 'the Pals battalion' }
+];
+periodFill(ECON, PESTS, EVENTS);
+
 // ================= Stage 2c: crime and justice, leaders and politics, reputation and gossip =================
 // Rates and punishments are starting estimates with real-history roots, not exact history.
 
@@ -4565,6 +4810,275 @@ function lawsApply(W) {
 }
 
 if (typeof module !== 'undefined') Object.assign(module.exports, { socUpgrade, standingWord });
+
+// ---------- history periods (V10) ----------
+CRIME_RATES.victorian = CRIME_RATES.edwardian = Object.assign({}, CRIME_RATES.frontier);
+JUSTICE.tudor = Object.assign({}, JUSTICE.medieval, { court: 'the justices at the quarter sessions' });
+JUSTICE.georgian = Object.assign({}, JUSTICE.medieval, { court: 'the justices at the quarter sessions', punish: Object.assign({}, JUSTICE.medieval.punish, { theft: [['whipped', 0.45], ['imprisoned', 0.3], ['transported to the colonies', 0.2], ['hanged', 0.05]] }) });
+// English courts: no lynching (hanged instead) and no running people out of town (a spell in jail instead)
+const IND_PUNISH = (j) => Object.assign({}, j, { court: 'the magistrates\' court', punish: Object.fromEntries(Object.entries(j.punish).map(([k, v]) => {
+  const m = new Map(); for (const [w, p] of v) { const w2 = /lynch/.test(w) ? 'hanged' : /run out of town/.test(w) ? 'jailed' : w; m.set(w2, (m.get(w2) || 0) + p); } return [k, [...m.entries()]]; })) });
+JUSTICE.victorian = IND_PUNISH(JUSTICE.frontier);
+JUSTICE.edwardian = IND_PUNISH(JUSTICE.frontier);
+OFFICES.victorian = OFFICES.edwardian = [{ key: 'mayor', title: 'Mayor', how: 'election', term: 1, seats: 1, voters: 'men' }, { key: 'sheriff', title: 'Police inspector', how: 'appointment', term: 5, by: 'mayor', occ: 'sheriff' }];
+RUMORS.tudor = ['hearing Mass in secret', 'consorting with a witch', 'carrying on with a married man', 'cheating at the market scales', 'fathering a child in the next parish'];
+RUMORS.georgian = ['poaching the squire\'s pheasants', 'running up debts in London', 'carrying on with a married man', 'watering the ale', 'being a Jacobite'];
+RUMORS.victorian = RUMORS.edwardian = ['drinking the rent money', 'carrying on with the lodger', 'informing for the mill owners', 'pawning the Sunday best', 'a child born too soon after the wedding'];
+periodFill(CRIME_RATES, CRIME_WORDS, JUSTICE, OFFICES, LEAD_KEY, RUMORS);
+periodFillLists(LAWS);
+
+// ================= V10: who people are inside, how the town sees them, and lasting injuries =================
+// Everything here runs once a year (livesYear), after the seasons, with its own random numbers.
+
+// ---------- the issues a town and every person has an attitude about (-100 hostile … +100 accepting) ----------
+const ISSUES = [
+  { key: 'samesex', label: 'Same-sex love', about: 'gay, lesbian and bisexual people living openly' },
+  { key: 'gender', label: 'Trans and non-binary people', about: 'people living as a gender other than the one they were raised as' },
+  { key: 'disability', label: 'Disabled and disfigured people', about: 'people living with blindness, a lost limb, deafness or a disfigured face' },
+  { key: 'outsiders', label: 'Newcomers and other cultures', about: 'people who arrived lately or come from another culture' },
+  { key: 'faiths', label: 'Other faiths', about: 'people who follow a different faith from most of the town' },
+  { key: 'women', label: 'Women working and leading', about: 'women in skilled work, trades and positions of authority' }
+];
+// Where each setting's town starts. These are estimates for each period; change them on the Attitudes page.
+const ATT_START = {
+  medieval: { samesex: -75, gender: -75, disability: -25, outsiders: -35, faiths: -70, women: -55 },
+  tudor: { samesex: -75, gender: -75, disability: -25, outsiders: -35, faiths: -65, women: -50 },
+  georgian: { samesex: -70, gender: -70, disability: -20, outsiders: -30, faiths: -45, women: -45 },
+  frontier: { samesex: -60, gender: -65, disability: -15, outsiders: -30, faiths: -30, women: -40 },
+  victorian: { samesex: -70, gender: -70, disability: -15, outsiders: -35, faiths: -35, women: -40 },
+  edwardian: { samesex: -60, gender: -65, disability: -10, outsiders: -30, faiths: -25, women: -15 },
+  modern: { samesex: 45, gender: 15, disability: 40, outsiders: 15, faiths: 35, women: 60 },
+  fantasy: { samesex: -20, gender: -25, disability: -10, outsiders: -20, faiths: -30, women: -10 },
+  scifi: { samesex: 65, gender: 55, disability: 60, outsiders: 45, faiths: 55, women: 80 },
+  dropped: { samesex: 35, gender: 5, disability: 30, outsiders: 10, faiths: 20, women: 45 }
+};
+
+// ---------- new settings (shown on the Era settings page; all can be changed) ----------
+Object.assign(SETTING_INFO, {
+  transShare: { label: 'People whose gender is not the one they were raised as (trans)', unit: 'chance', min: 0, max: 0.05 },
+  nonbinaryShare: { label: 'People who feel neither a man nor a woman (non-binary)', unit: 'chance', min: 0, max: 0.05 },
+  hidingStress: { label: 'Unhappiness each year from hiding who they are', unit: 'factor', min: 0, max: 40 },
+  attitudeEffect: { label: 'How strongly attitudes change how people treat each other', unit: 'factor', min: 0, max: 3 },
+  attitudesChangeLaws: { label: 'Town attitudes can change the law on same-sex couples', unit: 'yes/no' },
+  severeInjuries: { label: 'Lasting injuries that are severe (blindness, a lost limb…)', unit: 'chance', min: 0, max: 1 }
+});
+const LIVES_DEFAULTS = { transShare: 0.006, nonbinaryShare: 0.004, hidingStress: 8, attitudeEffect: 1, attitudesChangeLaws: true, severeInjuries: 0.2 };
+for (const e of Object.values(ERAS)) e.settings = Object.assign({}, LIVES_DEFAULTS, e.settings);
+
+// ---------- lasting injuries and conditions that change a life ----------
+// cannot: kinds of work (skills) they can no longer do; prone: how much more likely they are to be hurt; marks: which attitude decides how others see them
+const LASTING_SEVERE = ['blindness', 'the loss of an arm', 'the loss of a leg', 'deafness', 'a badly burned face'];
+const CONDITION_EFFECTS = {
+  'blindness': { cannot: ['craft', 'trade', 'animals', 'farming', 'outdoors', 'fighting', 'labor', 'healing', 'leadership'], prone: 1.6, disabled: true },
+  'the loss of an arm': { cannot: ['craft', 'fighting', 'labor', 'farming'], prone: 1.3, disabled: true },
+  'the loss of a leg': { cannot: ['labor', 'farming', 'fighting', 'outdoors', 'animals'], prone: 1.4, disabled: true },
+  'deafness': { cannot: ['fighting'], prone: 1.25, disabled: true },
+  'a badly burned face': { disfigured: true },
+  'a scarred face': { disfigured: true }, 'a scar across the face': { disfigured: true }, 'pockmarked skin': { disfigured: true },
+  'blindness in one eye': { prone: 1.15 }, 'deafness in one ear': { prone: 1.05 }, 'a limp': { prone: 1.1 }, 'a lame leg': { prone: 1.1 }
+};
+function conditionEffects(p) { return (p.conditions || []).map(c => CONDITION_EFFECTS[c]).filter(Boolean); }
+function canDoWork(p, o) { return !conditionEffects(p).some(e => e.cannot && e.cannot.includes(o.skill)); }
+function injuryProneness(p) { return conditionEffects(p).reduce((a, e) => a * (e.prone || 1), 1); }
+function isDisabled(p) { return conditionEffects(p).some(e => e.disabled); }
+function isDisfigured(p) { return conditionEffects(p).some(e => e.disfigured); }
+// sim.js asks this when someone is left with a lasting injury: sometimes it is a severe one
+function severeInjury(W, rng, p) { const s = W.settings.severeInjuries ?? 0.2; if (!rng.chance(s)) return null; const opts = LASTING_SEVERE.filter(l => !p.conditions.includes(l)); return opts.length ? rng.pick(opts) : null; }
+
+// ---------- who someone is inside ----------
+const otherSex = s => s === 'm' ? 'f' : 'm';
+const sexGender = s => s === 'm' ? 'man' : 'woman';
+const GENDER_WORD = { man: 'a man', woman: 'a woman', nonbinary: 'non-binary' };
+function livesInitPerson(W, rng, p, y) {
+  if (p.att) return;
+  const S = W.settings, a = ageOf(p, y);
+  // gender: most feel the gender they were raised as; some realise, as a child or later, that it isn't theirs
+  if (!p.inner && rng.chance((S.transShare ?? 0) + (S.nonbinaryShare ?? 0))) {
+    const felt = rng.chance((S.transShare ?? 0) / Math.max(1e-9, (S.transShare ?? 0) + (S.nonbinaryShare ?? 0))) ? sexGender(otherSex(p.sex)) : 'nonbinary';
+    p.inner = { felt, realise: p.born + (rng.chance(0.6) ? rng.int(4, 14) : rng.int(15, 40)), realised: null, out: null };
+  }
+  // gay and bisexual people realise in their teens; same-sex couples already together are open
+  if ((p.orientation === 'gay' || p.orientation === 'bisexual') && !p.so) {
+    const sp = W.people[p.spouse];
+    const together = sp && sp.sex === p.sex;
+    p.so = { realise: p.born + rng.int(11, 21), realised: together ? Math.min(y, p.born + 18) : null, out: together ? y : null };
+  }
+  // their own attitudes: the town's, shaped by personality and age, or their family's if they are a child
+  const t = townAtt(W), home = W.households[p.household];
+  const elders = home ? home.members.map(id => W.people[id]).filter(q => q && q.att && q !== p && ageOf(q, y) >= 18) : [];
+  p.att = {};
+  for (const is of ISSUES) {
+    const base = elders.length && a < 16 ? elders.reduce((s, q) => s + q.att[is.key], 0) / elders.length : t[is.key];
+    const lean = (p.traits.O - 50) * 0.5 + (p.traits.A - 50) * 0.3 - Math.max(0, a - 40) * 0.25;
+    p.att[is.key] = Math.round(clamp(base + lean + rng.normal(0, 18), -100, 100));
+  }
+  // at the start of a town, some who realised long ago are already open, depending on how accepting the town is
+  for (const [k, inner, issue] of [['inner', p.inner, 'gender'], ['so', p.so, 'samesex']]) {
+    if (!inner || inner.realised || y < inner.realise) continue;
+    inner.realised = inner.realise;
+    if (rng.chance(clamp(0.1 + (t[issue] + 100) / 200 * 0.7, 0.02, 0.85))) { inner.out = Math.max(inner.realise, y - rng.int(0, 10)); if (k === 'inner') p.gender = inner.felt; }
+  }
+}
+function townAtt(W) { W.att = W.att || {}; const st = ATT_START[W.era] || ATT_START[eraBase(W)] || ATT_START.modern; for (const is of ISSUES) if (!W.att[is.key]) W.att[is.key] = { v: st[is.key], locked: false }; return Object.fromEntries(ISSUES.map(is => [is.key, W.att[is.key].v])); }
+
+// ---------- who stands out, and for what ----------
+function majority(W, f) { const c = {}; for (const p of lives(W)) { const k = f(p); if (k) c[k] = (c[k] || 0) + 1; } return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || null; }
+function marksOf(W, p, y, maj) {
+  const m = [];
+  if (p.so && p.so.out) m.push('samesex');
+  if (p.gender && p.gender !== sexGender(p.sex)) m.push('gender');
+  if (isDisabled(p) || isDisfigured(p)) m.push('disability');
+  if ((p.arrived && y - p.arrived <= 5) || (maj.culture && p.culture !== maj.culture)) m.push('outsiders');
+  if (maj.faith && p.faith && p.faith !== maj.faith && !/not religious/i.test(p.faith)) m.push('faiths');
+  if (p.sex === 'f' && genderOf(p) === 'woman' && p.occId) { const o = (eraOf(W).occupations || []).find(x => x.id === p.occId); if (o && (o.cls === 'high' || o.cls === 'mid' || o.sex === 'm')) m.push('women'); }
+  return m;
+}
+const MARK_WORDS = { samesex: 'loving who they love', gender: 'living as who they are', disability: 'how they look and live', outsiders: 'being an outsider', faiths: 'their faith', women: 'doing a man\'s work, as some saw it' };
+
+// ---------- the yearly pass ----------
+function livesYear(W, _rng, y, R) {
+  const rng = new Rng((W.seed * 7777 + y * 131 + 3) >>> 0);
+  const S = W.settings, people = lives(W), eff = S.attitudeEffect ?? 1;
+  const t = townAtt(W);
+  for (const p of people) livesInitPerson(W, rng, p, y);
+  W._s = null;
+  // 1. realising, hiding, and coming out
+  for (const p of people) {
+    const a = ageOf(p, y);
+    for (const [k, issue] of [['inner', 'gender'], ['so', 'samesex']]) {
+      const inn = p[k]; if (!inn || inn.out) continue;
+      if (!inn.realised) {
+        if (y < inn.realise) continue;
+        inn.realised = y;
+        addEvent(W, p, y, 'mind', k === 'inner' ? `Came to understand, inside, that ${heShe(p)} is not who everyone thinks: ${GENDER_WORD[inn.felt]}.` : `Came to understand, inside, that ${heShe(p)} is drawn to ${p.orientation === 'gay' ? (p.sex === 'm' ? 'men' : 'women') : 'both men and women'}.`, { secret: true });
+        continue;
+      }
+      // hiding hurts
+      const m = mindOf(p); m.yearStress += S.hidingStress ?? 8;
+      if (a < 13) continue;
+      // will they come out? It depends on the town, the people around them, and their own nature
+      const around = closeCircle(W, p, y);
+      const near = around.length ? around.reduce((s, q) => s + (q.att ? q.att[issue] : t[issue]), 0) / around.length : t[issue];
+      const acc = t[issue] * 0.4 + near * 0.6;
+      const ch = clamp(0.01 + Math.pow((acc + 100) / 200, 2) * 0.3 + (p.traits.E - 50) / 800 - (p.traits.N - 50) / 900 + (a >= 18 ? 0.01 : 0), 0.003, 0.35);
+      if (rng.chance(ch)) comeOut(W, rng, p, k, issue, y, around);
+      else if (!inn.hidingNoted) { inn.hidingNoted = y; addEvent(W, p, y, 'mind', `Keeps who ${heShe(p)} really is hidden, for fear of what people would do.`, { secret: true }); }
+    }
+  }
+  // 2. attitudes drift: towards family, friends and the town; knowing someone open softens people
+  const maj = { culture: majority(W, p => p.culture), faith: majority(W, p => p.faith) };
+  const marked = new Map(); for (const p of people) marked.set(p.id, marksOf(W, p, y, maj));
+  const share = {}; for (const is of ISSUES) share[is.key] = people.filter(p => marked.get(p.id).includes(is.key)).length / Math.max(1, people.length);
+  const times = ATT_START[W.era] || ATT_START[eraBase(W)] || ATT_START.modern; // the views of the times, which people keep being pulled back towards
+  for (const p of people) {
+    const a = ageOf(p, y), circle = closeCircle(W, p, y), home = W.households[p.household];
+    const fam = home ? home.members.map(id => W.people[id]).filter(q => q && q !== p && q.att) : [];
+    for (const is of ISSUES) {
+      const k = is.key; let v = p.att[k];
+      const famV = fam.length ? fam.reduce((s, q) => s + q.att[k], 0) / fam.length : v;
+      const friV = circle.length ? circle.reduce((s, q) => s + q.att[k], 0) / circle.length : v;
+      const target = 0.45 * v + 0.25 * famV + 0.15 * friV + 0.15 * t[k];
+      v += (target - v) * (a < 16 ? 0.35 : 0.12);
+      if (W.att[k].locked) v += (t[k] - v) * 0.08; // the town's attitude is being pushed (your setting): people are nudged towards it
+      if (share[k] < 0.25 && circle.some(q => (marked.get(q.id) || []).includes(k))) v += 1; // knowing someone well changes minds
+      v += (times[k] - v) * 0.03;
+      p.att[k] = Math.round(clamp(v + rng.normal(0, 2), -100, 100));
+    }
+  }
+  // the town's attitude is the average of its grown-ups, unless you have locked it
+  const adults = people.filter(p => ageOf(p, y) >= 16);
+  for (const is of ISSUES) if (!W.att[is.key].locked && adults.length) W.att[is.key].v = Math.round(adults.reduce((s, p) => s + p.att[is.key], 0) / adults.length);
+  W.attHistory = W.attHistory || {}; W.attHistory[y] = Object.fromEntries(ISSUES.map(is => [is.key, W.att[is.key].v]));
+  const t2 = townAtt(W);
+  // 3. how people are treated: friendships and family ties warm or cool, reputations rise or fall, and some are harassed
+  for (const r of Object.values(W.rels)) {
+    if (r.ended) continue;
+    const A = W.people[r.a], B = W.people[r.b]; if (!A || !B || !isAlive(A) || !isAlive(B) || A.status !== 'resident' || B.status !== 'resident' || !A.att || !B.att) continue;
+    let d = 0;
+    for (const [x, z] of [[A, B], [B, A]]) for (const k of marked.get(z.id) || []) { const v = x.att[k]; d += v < -20 ? v / 100 * rng.range(1, 4) * eff * (k === 'disability' && isDisfigured(z) ? 1.5 : 1) : v > 40 ? 0.5 * eff : 0; }
+    if (d) r.score = clamp(Math.round((r.score + d) * 10) / 10, -100, 100);
+  }
+  for (const p of people) {
+    const mk = marked.get(p.id); if (!mk.length) continue;
+    const worst = Math.min(...mk.map(k => t2[k]));
+    if (p.standing != null) p.standing = Math.round(clamp(p.standing + (worst / 100) * 1.5 * eff, 0, 100) * 10) / 10;
+    // harassment where the town is hostile
+    if (worst < -20 && ageOf(p, y) >= 10 && rng.chance(-worst / 100 * 0.06 * eff)) {
+      const k = mk.find(x => t2[x] === worst);
+      const foes = people.filter(q => q !== p && q.att && q.att[k] < -50 && ageOf(q, y) >= 14);
+      const foe = foes.length ? rng.pick(foes) : null;
+      mindOf(p).yearStress += 12; addMemory(p, y, 'shame', foe ? foe.id : p.id, 0.3, 'harassed');
+      if (foe && ageOf(foe, y) >= 16 && foe.traits.A < 35 && rng.chance(0.2) && typeof commitCrime === 'function') commitCrime(W, rng, y, R, 'assault', foe, p, `hatred of ${MARK_WORDS[k] === MARK_WORDS.women ? 'women doing such work' : 'people like ' + himHer(p)}`);
+      else addEvent(W, p, y, 'conflict', `${foe ? `Was jeered at and shunned by @${foe.id}` : 'Was jeered at and shunned in the street'} for ${MARK_WORDS[k]}.`);
+      if (k === 'disability' && isDisfigured(p) && rng.chance(0.3)) addEvent(W, p, y, 'conflict', 'Children ran away in fright at the sight of ' + hisHer(p) + ' face.', { minor: true });
+    }
+  }
+  // 4. injuries that stop someone doing their work
+  for (const p of people) {
+    if (!p.occId || !p.conditions || !p.conditions.length) continue;
+    const o = (eraOf(W).occupations || []).find(x => x.id === p.occId);
+    if (o && !canDoWork(p, o)) {
+      const c = p.conditions.find(c => CONDITION_EFFECTS[c] && CONDITION_EFFECTS[c].cannot && CONDITION_EFFECTS[c].cannot.includes(o.skill));
+      leaveJob(W, rng, p, y, `could no longer do the work after ${c}`);
+      p.formerOccupation = p.occupation; p.occId = null;
+      p.occupation = 'Unable to do ' + hisHer(p) + ' old work';
+      addEvent(W, p, y, 'setback', `Had to give up work as ${o.name.toLowerCase()} because of ${c}.`);
+    }
+  }
+  // 5. the law can follow the town (if allowed in the settings)
+  if (S.attitudesChangeLaws) {
+    if (!S.sameSexCouples && t2.samesex >= 35) { S.sameSexCouples = true; W.log.push({ y, t: 'law', text: `With most people now accepting, same-sex couples were allowed to marry.` }); }
+    else if (S.sameSexCouples && t2.samesex <= -35) { S.sameSexCouples = false; W.log.push({ y, t: 'law', text: `With feeling turned against them, same-sex couples were no longer allowed to marry.` }); }
+  }
+}
+// people who matter to someone: family at home, parents, children, partner and close friends
+function closeCircle(W, p, y) {
+  const ids = new Set([p.father, p.mother, p.spouse, ...p.children]);
+  const h = W.households[p.household]; if (h) h.members.forEach(id => ids.add(id));
+  for (const r of relsOf(W, p.id)) if (!r.ended && r.score >= 35) ids.add(r.a === p.id ? r.b : r.a);
+  ids.delete(p.id);
+  return [...ids].map(id => W.people[id]).filter(q => q && isAlive(q) && q.status === 'resident' && q.att);
+}
+// coming out, and how the people around them react
+function comeOut(W, rng, p, k, issue, y, around) {
+  const inn = p[k]; inn.out = y;
+  const m = mindOf(p); m.yearStress = Math.max(0, m.yearStress - 15); m.joy += 10;
+  if (k === 'inner') {
+    const from = genderOf(p); p.gender = inn.felt;
+    // many choose a new name
+    if (rng.chance(inn.felt === 'nonbinary' ? 0.35 : 0.65)) {
+      const C = CULTURES[p.culture]; const sx = inn.felt === 'man' ? 'm' : inn.felt === 'woman' ? 'f' : rng.pick(['m', 'f']);
+      const L = C && (sx === 'm' ? C.male : C.female); const list = L ? nameList(L, p.born) : null;
+      if (list && list.length) { p.firstAtBirth = p.firstAtBirth || p.first; p.first = rng.pick(list); }
+    }
+    addEvent(W, p, y, 'mind', `Came out, and from now on lives as ${GENDER_WORD[inn.felt]}${p.firstAtBirth && p.firstAtBirth !== p.first ? `, taking the name ${p.first}` : ''}.`, { why: `${cap(heShe(p))} had been living as ${GENDER_WORD[from]}.` });
+  } else addEvent(W, p, y, 'mind', `Stopped hiding, and lives openly as ${p.orientation === 'gay' ? (p.sex === 'm' ? 'a gay man' : 'a lesbian') : 'bisexual'}.`);
+  // a marriage of convenience may not survive it
+  const sp = W.people[p.spouse];
+  if (k === 'so' && sp && sp.sex !== p.sex && W.settings.divorce > 0 && rng.chance(0.4)) separate(W, rng, p, sp, y);
+  for (const q of around) {
+    const v = q.att ? q.att[issue] : 0; const r = getRel(W, p.id, q.id);
+    if (v < -30) {
+      const fam = [p.father, p.mother, p.spouse, ...p.children].includes(q.id) || q.household === p.household;
+      const drop = -rng.int(10, 40) * (W.settings.attitudeEffect ?? 1);
+      const rr = r || setRelIndexed(W, p.id, q.id, fam ? 'strained' : 'acquaintance', 0, y, 'family');
+      rr.score = clamp(rr.score + drop, -100, 100);
+      if (fam && v < -60 && rng.chance(0.35)) { rr.type = 'estranged'; relNote(rr, y, `@${q.id} turned away from @${p.id} after ${heShe(p)} came out.`); addEvent(W, p, y, 'loss', `@${q.id} turned ${hisHer(q)} back on ${himHer(p)} after ${heShe(p)} came out.`); }
+      else relNote(rr, y, `@${q.id} took it badly when @${p.id} came out.`);
+    } else if (v > 30) {
+      if (r) { r.score = clamp(r.score + rng.int(5, 15), -100, 100); relNote(r, y, `@${q.id} stood by @${p.id} when ${heShe(p)} came out.`); }
+    }
+  }
+}
+// a new or opened town gets its attitudes, and every person their inner life
+function livesUpgrade(W) {
+  townAtt(W);
+  if (W._livesReady) return;
+  const rng = new Rng((W.seed * 4243 + 11) >>> 0);
+  for (const p of lives(W)) livesInitPerson(W, rng, p, W.year);
+  W._livesReady = true;
+}
+if (typeof module !== 'undefined') Object.assign(module.exports, { ISSUES, ATT_START, livesYear, livesUpgrade, canDoWork, injuryProneness, isDisabled, isDisfigured, severeInjury, CONDITION_EFFECTS, townAtt, marksOf, comeOut });
 
 // ================= Stage 3: the census =================
 // Each dimension sorts a person into one group (or several, for things like health conditions).
@@ -6178,7 +6692,10 @@ return {
 
 /* ---------- fitting a made person to the town ---------- */
 // Town Chronicle settings the maker can use for now. Frontier and Dropped come with the later step that combines both apps' lists.
-const MAKER_SETTINGS = { medieval: ['historical', 'medieval'], modern: ['modern', null], fantasy: ['fantasy', null], scifi: ['scifi', null] };
+const MAKER_SETTINGS = { medieval: ['historical', 'medieval'], modern: ['modern', null], fantasy: ['fantasy', null], scifi: ['scifi', null],
+  frontier: ['historical', 'victorian'], dropped: ['modern', null], tudor: ['historical', 'renaissance'], georgian: ['historical', 'georgian'], victorian: ['historical', 'victorian'], edwardian: ['historical', 'edwardian'] };
+// Birthplaces for frontier towns (LifeWeaver's Victorian list is British).
+const MAKER_PLACES = { frontier: ['St. Louis','Kansas City','Denver','San Francisco','Chicago','New York','Boston','Philadelphia','Cincinnati','Galveston','Santa Fe','Cork','Hamburg','Liverpool','Canton','Sonora'] };
 // When no birth year is locked, a made person is aged 16 to 50 on arrival: the ages Town Chronicle already uses for newcomers in plans.
 const MAKER_AGES = [16, 50];
 function makerAvailable(W) { return !!MAKER_SETTINGS[W.era]; }
@@ -6188,7 +6705,12 @@ function makerBlank(W) { const m = MAKER_SETTINGS[W.era]; return m ? LW.blankPer
 // Runs fn with LifeWeaver fitted to this town: "now" is the arrival year, people may still be alive, and years use the town's labels.
 function withTown(W, rand, fn) {
   const y = makerYear(W), era = ERAS[W.era];
-  LW.setTownFit(d => Object.assign({}, d, { now: y, alwaysDead: false, years: [y - MAKER_AGES[1], y - MAKER_AGES[0]], fmt: era.yearLabel || d.fmt }));
+  // LifeWeaver's names combined with the town's own (both apps' lists), so made people fit in with their neighbours
+  const cs = Object.keys(era.cultures || {}).map(c => CULTURES[c]).filter(Boolean), mix = (a, b) => [...new Set([...(a || []), ...b])];
+  const flat = l => Array.isArray(l) ? l : l && l.bands ? l.bands.flatMap(b => b[1]) : []; // modern name lists come in bands by birth year
+  LW.setTownFit(d => Object.assign({}, d, { now: y, alwaysDead: false, years: [y - MAKER_AGES[1], y - MAKER_AGES[0]], fmt: era.yearLabel || d.fmt,
+    names: { m: mix(d.names.m, cs.flatMap(c => flat(c.male))), f: mix(d.names.f, cs.flatMap(c => flat(c.female))) }, sur: mix(d.sur, cs.flatMap(c => flat(c.surnames))),
+    places: MAKER_PLACES[W.era] || d.places }));
   LW.setRandom(rand);
   try { return fn(); } finally { LW.setTownFit(null); LW.setRandom(null); }
 }
@@ -6538,7 +7060,7 @@ function renderNav() {
   const map = { person: 'people', household: 'households', group: 'groups', workplace: 'work' };
   const on = map[cur] || cur;
   $('#nav').innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === on ? 'on' : ''}">${l}</button>`).join('') +
-    `<div class="sep"></div><div class="note">V9: adds Make a person — design someone (LifeWeaver’s person maker), lock what you want, and move them in with their family.</div>`;
+    `<div class="sep"></div><div class="note">V10: four new history periods, attitudes, coming out, lasting injuries and photos.</div>`;
   $('#nav').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (b.dataset.nav === 'people') { ui.peopleFilter = {}; ui.peoplePage = 0; } if (b.dataset.nav === 'households') ui.hhMeans = null; nav.stack = []; nav.cur = null; go(b.dataset.nav); });
 }
 function render() {
@@ -6551,7 +7073,7 @@ function render() {
   const crumbs = nav.stack.length ? `<div class="crumbs"><button class="small" id="bBack">← Back</button></div>` : '';
   let html = '';
   try {
-    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings, maker: viewMaker })[v](p);
+    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings, maker: viewMaker, attitudes: viewAttitudes, photos: viewPhotos })[v](p);
   } catch (err) { console.error(err); html = `<div class="card err">Something went wrong showing this page: ${esc(err.message)}</div>`; }
   $('#main').innerHTML = crumbs + html;
   if ($('#bBack')) $('#bBack').onclick = back;
@@ -6775,7 +7297,7 @@ function viewPerson({ id }) {
   const initials = (p.first[0] || '') + (p.last[0] || '');
   const tabs = [['story', 'Life story'], ['years', 'Year by year'], ['family', 'Family'], ['tree', 'Family tree'], ['connections', 'Connections'], ['map', 'Connection map'], ['traits', 'Mind, body & skills'], ['edit', 'Edit & plan']];
   const head = `<div class="card"><div class="phead">
-    <div class="avatar" style="background:${color}">${esc(initials)}</div>
+    ${p.photo && W.photos && W.photos[p.photo] ? `<img class="avatar avatar-photo" src="${W.photos[p.photo].data}" alt="${esc(fullName(p))}" data-photo="${p.photo}">` : `<div class="avatar" style="background:${color}">${esc(initials)}</div>`}
     <div style="flex:1">
       <h1 style="margin-bottom:.15rem">${esc(fullName(p))}${p.birthName && p.birthName !== p.last ? ` <span class="muted" style="font-size:1rem">(born ${esc(p.birthName)})</span>` : ''}</h1>
       <div>${p.status === 'dead' ? `${yl(p.born)} – ${yl(p.died)} · died aged ${p.died - p.born} of ${esc(p.cause)}` : `Born ${yl(p.born)} · age ${ageOf(p, W.year)}`}
@@ -7366,8 +7888,9 @@ function fmtMoney(v) {
   const E = ECON[W.era]; if (!E || v == null) return '';
   const neg = v < 0; v = Math.abs(Math.round(v));
   let s;
-  if (W.era === 'medieval') { const l = Math.floor(v / 240), sh = Math.floor((v % 240) / 12), d = v % 12; s = l ? `£${l} ${sh}s` : sh ? `${sh}s ${d}d` : `${d}d`; }
+  if (W.era === 'medieval' || E.unit === 'pence') { const l = Math.floor(v / 240), sh = Math.floor((v % 240) / 12), d = v % 12; s = l ? `£${l} ${sh}s` : sh ? `${sh}s ${d}d` : `${d}d`; }
   else if (W.era === 'frontier' || W.era === 'modern') s = '$' + v.toLocaleString();
+  else if (E.unit === 'pounds') s = '£' + v.toLocaleString();
   else s = `${v.toLocaleString()} ${E.unit}`;
   return neg ? `−${s} (debt)` : s;
 }
@@ -7505,7 +8028,7 @@ function viewLeaders() {
     chart = `<svg viewBox="0 0 ${Wd} ${H}" width="100%"><line x1="${pl}" x2="${Wd - pr}" y1="${Y(50)}" y2="${Y(50)}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${pl - 4}" y="${Y(50) + 3}" font-size="9" text-anchor="end" fill="var(--muted)">50%</text><path d="${appr.map(([, a], i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(a.v).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/><text x="${pl}" y="${H - 4}" font-size="10" fill="var(--muted)">${appr[0][0]}</text><text x="${Wd - pr}" y="${H - 4}" font-size="10" text-anchor="end" fill="var(--muted)">${appr[appr.length - 1][0]}</text></svg><p class="small muted">How the people feel about their leader, year by year.</p>`;
   }
   return `<h1>Leaders and politics</h1>
-  <p class="muted">Who runs ${esc(W.name)}, how they got there, and the rules they made. ${W.era === 'medieval' || W.era === 'frontier' ? 'As in the real past this setting is based on, only men vote.' : ''}</p>
+  <p class="muted">Who runs ${esc(W.name)}, how they got there, and the rules they made. ${eraBase(W) === 'medieval' || eraBase(W) === 'frontier' ? 'As in the real past this setting is based on, only men vote.' : ''}</p>
   <div class="grid g2">
     <div class="card"><h3>In office now</h3>${Object.values(S.offices).map(o => `<div class="famsec"><h4>${esc(o.title)}</h4><div class="chips">${o.holders.map(id => chip(id, `since ${yl(o.since)}`)).join('') || '<span class="muted small">Nobody right now.</span>'}</div>${o.next ? `<p class="small muted">Next ${OFFICES[W.era].find(x => x.key === o.key).how === 'election' ? 'vote' : 'appointment'}: ${yl(o.next)}</p>` : ''}</div>`).join('')}</div>
     <div class="card"><h3>Approval of the leader</h3>${lead && lead.holders[0] ? `<p>${plink(lead.holders[0])}: <b>${appr.length ? appr[appr.length - 1][1].v + '%' : '—'}</b></p>` : ''}${chart}</div>
@@ -8884,6 +9407,172 @@ printLife = function (p, o) {
   const h = tcPrintLife(p, o); if (!p.made) return h;
   const at = h.indexOf('<h3>Year by year</h3>');
   return at < 0 ? h + makerMadeHTML(p, true) : h.slice(0, at) + makerMadeHTML(p, true) + h.slice(at);
+};
+
+// ================= V10 page code: attitudes, who people are, lasting injuries, photos =================
+NAV.splice(NAV.findIndex(x => x[0] === 'grudges') + 1, 0, ['attitudes', 'Attitudes']);
+NAV.splice(NAV.findIndex(x => x[0] === 'people') + 1, 0, ['photos', 'Photos']);
+
+const attWord = v => v <= -60 ? 'hostile' : v <= -20 ? 'disapproving' : v < 20 ? 'mixed' : v < 60 ? 'accepting' : 'welcoming';
+function attBar(v, wide) {
+  const pct = (v + 100) / 2;
+  return `<span class="att-bar ${wide ? 'wide' : ''}" title="${v} (${attWord(v)})"><span class="att-mid"></span><span class="att-dot" style="left:${pct}%;background:${v < -20 ? 'var(--bad)' : v > 20 ? 'var(--good)' : 'var(--warn)'}"></span></span>`;
+}
+
+// ---------- the Attitudes page ----------
+function viewAttitudes() {
+  townAtt(W);
+  const y = W.year, people = lives(W);
+  const maj = { culture: majority(W, p => p.culture), faith: majority(W, p => p.faith) };
+  const hist = W.attHistory || {}, years = Object.keys(hist).map(Number).sort((a, b) => a - b);
+  const then = years.find(yy => yy >= y - 20);
+  const recent = [];
+  for (const p of Object.values(W.people)) for (const e of p.events) if (e.y >= y - 5 && (/^Came out, and from now on|^Stopped hiding, and lives openly|jeered at and shunned|turned .* back on .* after .* came out/.test(e.text))) recent.push([e.y, p, e]);
+  recent.sort((a, b) => b[0] - a[0]);
+  const rows = ISSUES.map(is => {
+    const a = W.att[is.key], openN = people.filter(p => marksOf(W, p, y, maj).includes(is.key)).length;
+    const hidN = is.key === 'gender' ? people.filter(p => p.inner && p.inner.realised && !p.inner.out).length : is.key === 'samesex' ? people.filter(p => p.so && p.so.realised && !p.so.out).length : null;
+    return `<div class="card att-card">
+      <div class="att-head"><h3>${esc(is.label)}</h3><span class="pill ${a.v < -20 ? 'bad' : a.v > 20 ? 'good' : 'warn'}">${attWord(a.v)} (${a.v})</span></div>
+      <p class="muted small">How the town feels about ${esc(is.about)}.${then != null && then < y ? ` In ${esc(yl(then))} it was ${hist[then][is.key]} (${attWord(hist[then][is.key])}).` : ''}</p>
+      ${attBar(a.v, true)}
+      <div class="formrow"><label>Set the town's attitude<span><input type="range" min="-100" max="100" step="1" value="${a.v}" data-attset="${is.key}" style="width:240px"> <b data-attshow="${is.key}">${a.v}</b></span></label>
+        <label class="small"><span><input type="checkbox" data-attlock="${is.key}" ${a.locked ? 'checked' : ''}> Hold it there: each year people are nudged towards it (like sermons, newspapers or laws). Unticked, it follows what people think.</span></label></div>
+      <p class="small">${openN} ${openN === 1 ? 'person' : 'people'} in the town ${is.key === 'samesex' ? 'live openly as gay, lesbian or bisexual' : is.key === 'gender' ? 'live as a gender other than the one they were raised as' : is.key === 'disability' ? 'live with a severe disability or a disfigured face' : is.key === 'outsiders' ? 'are newcomers or from another culture' : is.key === 'faiths' ? 'follow a different faith from most' : 'are women in skilled or leading work'}.${hidN != null && showSecrets ? ` <span class="pill acc">secret</span> ${hidN} more know it about themselves but are hiding it.` : ''}</p>
+    </div>`;
+  }).join('');
+  return `<h1>Attitudes</h1>
+    <p class="muted">How ${esc(W.name)} feels about people who are different, from hostile (−100) to welcoming (+100). Everyone has their own attitudes too, shaped by their nature, family, friends and the town; you can see them on each person's page.
+    Attitudes change how people treat each other: friendships and family ties cool or warm, reputations rise or fall, and where the town is hostile people are jeered at, shunned or even attacked. They also decide whether people dare to come out.</p>
+    <p class="small muted">Starting points are estimates for the period. ${W.settings.attitudesChangeLaws ? `The law on same-sex couples follows the town (it is ${W.settings.sameSexCouples ? 'allowed' : 'not allowed'} now); you can turn that off in Era settings.` : 'The law on same-sex couples does not follow the town (see Era settings).'}</p>
+    <div class="att-grid">${rows}</div>
+    <div class="card"><h3>In the last five years</h3>${recent.length ? recent.slice(0, 40).map(([yy, p, e]) => `<div class="small" style="padding:.2rem 0;border-bottom:1px solid var(--soft)"><b>${esc(yl(yy))}</b> ${plink(p.id)}: ${linkify(e.text)}</div>`).join('') : '<p class="muted small">Nothing yet.</p>'}</div>`;
+}
+afterRender.attitudes = () => {
+  document.querySelectorAll('[data-attset]').forEach(el => {
+    el.oninput = () => { const s = document.querySelector(`[data-attshow="${el.dataset.attset}"]`); if (s) s.textContent = el.value; };
+    el.onchange = () => { snapshotForEdits(); const k = el.dataset.attset; W.att[k].v = +el.value; W.att[k].locked = true; logEdit(W, `Set the town's attitude to ${ISSUES.find(i => i.key === k).label.toLowerCase()} to ${el.value} and held it there.`); afterEdit(null, 'Set. People will be nudged towards it each year.'); };
+  });
+  document.querySelectorAll('[data-attlock]').forEach(el => el.onchange = () => { snapshotForEdits(); W.att[el.dataset.attlock].locked = el.checked; logEdit(W, `${el.checked ? 'Held' : 'Released'} the town's attitude to ${ISSUES.find(i => i.key === el.dataset.attlock).label.toLowerCase()}.`); afterEdit(null, el.checked ? 'Held.' : 'Released: it now follows what people think.'); });
+};
+
+// ---------- who they are, on a person's page ----------
+function whoTheyAreHTML(p) {
+  const lines = [];
+  const raised = p.sex === 'm' ? 'a boy' : 'a girl';
+  if (p.gender && p.gender !== (p.sex === 'm' ? 'man' : 'woman')) lines.push(`Lives as ${GENDER_WORD[p.gender]}${p.inner && p.inner.out ? ` (since ${esc(yl(p.inner.out))})` : ''}. Raised as ${raised}${p.firstAtBirth && p.firstAtBirth !== p.first ? `, named ${esc(p.firstAtBirth)}` : ''}.`);
+  if (p.so && p.so.out) lines.push(`Lives openly as ${p.orientation === 'gay' ? (genderOf(p) === 'man' ? 'a gay man' : genderOf(p) === 'woman' ? 'a lesbian' : 'gay') : 'bisexual'} (since ${esc(yl(p.so.out))}).`);
+  if (showSecrets) {
+    if (p.inner && p.inner.realised && !p.inner.out) lines.push(`<span class="pill acc">secret</span> Knows, since ${esc(yl(p.inner.realised))}, that ${heShe(p)} is ${GENDER_WORD[p.inner.felt]}, but hides it.`);
+    if (p.so && p.so.realised && !p.so.out) lines.push(`<span class="pill acc">secret</span> Knows, since ${esc(yl(p.so.realised))}, that ${heShe(p)} is ${p.orientation === 'gay' ? 'gay' : 'bisexual'}, but hides it.`);
+  }
+  const SK = { craft: 'crafts', trade: 'trade', animals: 'work with animals', farming: 'farming', outdoors: 'outdoor work', fighting: 'fighting', labor: 'heavy labour', healing: 'healing', leadership: 'leading others' };
+  for (const c of p.conditions || []) { const e = CONDITION_EFFECTS[c]; if (!e) continue; const bits = []; if (e.cannot) bits.push('can no longer do ' + e.cannot.map(k => SK[k] || k).join(', ')); if (e.prone && e.prone > 1.01) bits.push(`more likely to be hurt (×${e.prone})`); if (e.disfigured) bits.push('some people are frightened or put off by it'); if (e.disabled) bits.push('how people treat this depends on their attitudes'); lines.push(`${esc(cap(c))}: ${bits.join('; ')}.`); }
+  const att = p.att ? `<div class="att-person">${ISSUES.map(is => `<div class="small"><span class="att-lab">${esc(is.label)}</span>${attBar(p.att[is.key])} <span class="muted">${attWord(p.att[is.key])}</span></div>`).join('')}</div>` : '';
+  if (!lines.length && !att) return '';
+  return `<div class="card"><h3>Who ${esc(p.first)} is</h3>${lines.map(l => `<p class="small" style="margin:.2rem 0">${l}</p>`).join('')}${att ? `<h4 class="small muted" style="margin:.6rem 0 .2rem">${esc(p.first)}'s own attitudes</h4>${att}` : ''}</div>`;
+}
+const v10PersonStory = personStory;
+personStory = function (p, y) { return v10PersonStory(p, y) + photoStrip(p) + whoTheyAreHTML(p); };
+
+// ---------- changing who someone is (Edit & plan tab) ----------
+const v10PersonEdit = personEdit;
+personEdit = function (p) {
+  const h = v10PersonEdit(p);
+  if (p.status !== 'resident' || p.died != null) return h;
+  const g = genderOf(p), orient = p.orientation || 'straight', open = !!(p.so && p.so.out);
+  return `<div class="card"><h3>Who ${esc(p.first)} is</h3><div class="formrow">
+    <label>Lives as<select id="edGender">${['man', 'woman', 'nonbinary'].map(x => `<option value="${x}" ${x === g ? 'selected' : ''}>${x === 'nonbinary' ? 'non-binary' : 'a ' + x}</option>`).join('')}</select></label>
+    <label>Drawn to<select id="edOrient">${[['straight', 'the other sex'], ['gay', 'the same sex'], ['bisexual', 'both']].map(([k, l]) => `<option value="${k}" ${k === orient ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label class="small"><span><input type="checkbox" id="edOpen" ${open ? 'checked' : ''} ${orient === 'straight' ? 'disabled' : ''}> Open about it</span></label>
+    <button id="edWhoSave">Change</button></div>
+    <p class="small muted">Changing these here is immediate. Left alone, the town decides: people realise who they are, and come out or hide it depending on the people around them.</p></div>` + h;
+};
+document.addEventListener('click', e => {
+  if (!e.target.closest('#edWhoSave')) return;
+  const p = W.people[nav.cur.params.id]; if (!p) return;
+  const g = $('#edGender').value, o = $('#edOrient').value, open = $('#edOpen').checked, y = W.year;
+  snapshotForEdits();
+  const changes = [];
+  if (g !== genderOf(p)) {
+    const raisedAs = p.sex === 'm' ? 'man' : 'woman';
+    if (g === raisedAs) { p.gender = undefined; if (p.inner) p.inner.out = null; }
+    else { p.inner = p.inner || { felt: g, realise: p.born, realised: y, out: null }; p.inner.felt = g; p.inner.realised = p.inner.realised || y; p.inner.out = y; p.gender = g; addEvent(W, p, y, 'mind', `Came out, and from now on lives as ${GENDER_WORD[g]}.`); }
+    changes.push(`lives as ${g === 'nonbinary' ? 'non-binary' : 'a ' + g}`);
+  }
+  if (o !== (p.orientation || 'straight')) { p.orientation = o; if (o === 'straight') delete p.so; else p.so = p.so || { realise: p.born + 14, realised: y, out: null }; changes.push(`drawn to ${o === 'gay' ? 'the same sex' : o === 'bisexual' ? 'both' : 'the other sex'}`); }
+  if (p.so) { if (open && !p.so.out) { p.so.realised = p.so.realised || y; p.so.out = y; addEvent(W, p, y, 'mind', `Stopped hiding, and lives openly as ${o === 'gay' ? (p.sex === 'm' ? 'a gay man' : 'a lesbian') : 'bisexual'}.`); changes.push('open about it'); } else if (!open && p.so.out) { p.so.out = null; changes.push('hiding it'); } }
+  if (!changes.length) { toast('Nothing changed.'); return; }
+  logEdit(W, `Changed who @${p.id} is: ${changes.join(', ')}.`);
+  afterEdit(null, 'Changed.');
+});
+
+// ---------- photos ----------
+// Photos live inside the save, shrunk to at most 1000 pixels across, so one file holds the whole town.
+function photosOf(id) { return Object.values(W.photos || {}).filter(ph => ph.people.includes(id)).sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || a.id - b.id); }
+function photoStrip(p) {
+  const ph = photosOf(p.id);
+  return `<div class="card"><h3>Photos of ${esc(p.first)} ${ph.length ? `<span class="muted small">(${ph.length})</span>` : ''}</h3>
+    ${ph.length ? `<div class="ph-strip">${ph.map(x => `<figure class="ph-thumb" data-photo="${x.id}"><img src="${x.data}" alt=""><figcaption>${x.y != null ? esc(yl(x.y)) + (x.y - p.born >= 0 ? ` · age ${x.y - p.born}` : '') : ''}${x.people.length > 1 ? ` · with ${x.people.length - 1} other${x.people.length > 2 ? 's' : ''}` : ''}</figcaption></figure>`).join('')}</div>` : '<p class="muted small">No photos yet.</p>'}
+    <button class="small" data-addphoto="${p.id}">+ Add a photo</button></div>`;
+}
+function viewPhotos() {
+  const all = Object.values(W.photos || {}).sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || a.id - b.id);
+  return `<h1>Photos</h1><p class="muted">Every photo in ${esc(W.name)}. A photo can show one person or several (a group photo), and belong to any year. Add photos from a person's page; click one to see it, add or remove people, or make it someone's main picture.</p>
+    <div class="card">${all.length ? `<div class="ph-strip">${all.map(x => `<figure class="ph-thumb" data-photo="${x.id}"><img src="${x.data}" alt=""><figcaption>${x.y != null ? esc(yl(x.y)) : ''} · ${x.people.map(id => W.people[id] ? esc(W.people[id].first + ' ' + W.people[id].last) : '').filter(Boolean).slice(0, 3).join(', ')}${x.people.length > 3 ? '…' : ''}</figcaption></figure>`).join('')}</div>` : '<p class="muted">No photos yet. Open someone\'s page and use “Add a photo”.</p>'}</div>`;
+}
+function shrinkImage(file, max) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); resolve({ data: c.toDataURL('image/jpeg', 0.85), w: c.width, h: c.height }); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read as a picture.')); };
+    img.src = url;
+  });
+}
+function addPhotoData(data, y, caption, ids) {
+  W.photos = W.photos || {}; W.nextPhoto = W.nextPhoto || 1;
+  const id = W.nextPhoto++;
+  W.photos[id] = { id, data, y: y == null || y === '' ? null : +y, caption: caption || '', people: [...new Set(ids)], added: new Date().toISOString() };
+  for (const pid of ids) { const q = W.people[pid]; if (q && !q.photo) q.photo = id; }
+  return id;
+}
+function photoOverlay(id) {
+  const x = W.photos[id]; if (!x) return;
+  document.querySelectorAll('.ph-overlay').forEach(o => o.remove());
+  const o = document.createElement('div'); o.className = 'overlay ph-overlay';
+  o.innerHTML = `<div class="box ph-box"><button class="small ph-close" title="Close">✕</button><img src="${x.data}" alt="">
+    <div class="formrow"><label>Year<input type="number" id="phYear" value="${x.y ?? ''}" style="width:90px"></label><label style="flex:1">Caption<input type="text" id="phCap" value="${esc(x.caption)}" style="width:100%"></label><button id="phSave">Save</button></div>
+    <p class="small"><b>In this photo:</b> ${x.people.map(pid => W.people[pid] ? `<span class="chip"><span class="nm" data-pid="${pid}">${esc(fullName(W.people[pid]))}</span> <button class="small" data-phmain="${pid}" title="Make this ${esc(W.people[pid].first)}'s main picture">${W.people[pid].photo === id ? '★ main picture' : '☆ make main'}</button> <button class="small" data-phunlink="${pid}" title="Take ${esc(W.people[pid].first)} out of this photo">✕</button></span>` : '').join(' ')}</p>
+    <div class="formrow"><label>Add someone to this photo<input type="text" id="phAdd" list="dlPeople" placeholder="Type a name…" size="28"></label><button id="phAddBtn">Add</button><span style="flex:1"></span><button id="phDel" class="small">Delete photo</button></div>
+    ${peopleDatalist()}</div>`;
+  document.body.appendChild(o);
+  const done = msg => { o.remove(); dirty = true; render(); if (msg) toast(msg); };
+  o.onclick = ev => { if (ev.target === o) o.remove(); };
+  o.querySelector('.ph-close').onclick = () => o.remove();
+  o.querySelector('#phSave').onclick = () => { snapshotForEdits(); x.y = o.querySelector('#phYear').value === '' ? null : +o.querySelector('#phYear').value; x.caption = o.querySelector('#phCap').value; done('Saved.'); };
+  o.querySelector('#phAddBtn').onclick = () => { const pid = idFromPick(o.querySelector('#phAdd').value); if (!pid || !W.people[pid]) { toast('Pick someone from the list.'); return; } snapshotForEdits(); if (!x.people.includes(pid)) x.people.push(pid); if (!W.people[pid].photo) W.people[pid].photo = id; done(); photoOverlay(id); };
+  o.querySelectorAll('[data-phmain]').forEach(b => b.onclick = () => { snapshotForEdits(); W.people[+b.dataset.phmain].photo = id; done(); photoOverlay(id); });
+  o.querySelectorAll('[data-phunlink]').forEach(b => b.onclick = () => { const pid = +b.dataset.phunlink; if (x.people.length === 1 && !confirm('This is the only person in the photo. Delete the photo?')) return; snapshotForEdits(); x.people = x.people.filter(q => q !== pid); if (W.people[pid].photo === id) W.people[pid].photo = photosOf(pid)[0]?.id || null; if (!x.people.length) delete W.photos[id]; done(); if (W.photos[id]) photoOverlay(id); });
+  o.querySelector('#phDel').onclick = () => { if (!confirm('Delete this photo from the town? (Undo can bring it back.)')) return; snapshotForEdits(); for (const pid of x.people) if (W.people[pid] && W.people[pid].photo === id) W.people[pid].photo = null; delete W.photos[id]; for (const pid of x.people) if (W.people[pid] && !W.people[pid].photo) W.people[pid].photo = photosOf(pid)[0]?.id || null; done('Photo deleted.'); };
+}
+document.addEventListener('click', async e => {
+  if (e.target.closest('.ph-overlay [data-pid]')) { document.querySelectorAll('.ph-overlay').forEach(o => o.remove()); return; } // going to someone's page closes the photo
+  const th = e.target.closest('[data-photo]'); if (th && !e.target.closest('.ph-overlay')) { e.preventDefault(); photoOverlay(+th.dataset.photo); return; }
+  const add = e.target.closest('[data-addphoto]'); if (!add) return;
+  const pid = +add.dataset.addphoto, inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    try { const im = await shrinkImage(f, 1000); snapshotForEdits(); const id = addPhotoData(im.data, W.year, '', [pid]); dirty = true; render(); photoOverlay(id); toast('Photo added. Set its year, a caption and anyone else in it.'); }
+    catch (err) { toast(err.message, 4000); }
+  };
+  inp.click();
+});
+
+// the main photo at the top of a printed life story
+const v10PrintLife = printLife;
+printLife = function (p, o) {
+  const h = v10PrintLife(p, o); const ph = p.photo && W.photos && W.photos[p.photo]; if (!ph) return h;
+  const at = h.indexOf('</h2>'); return at < 0 ? h : h.slice(0, at + 5) + `<img class="pphoto" src="${ph.data}" alt="">` + h.slice(at + 5);
 };
 
 </script>

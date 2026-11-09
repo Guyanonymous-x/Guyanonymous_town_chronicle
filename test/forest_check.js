@@ -1,6 +1,6 @@
 // Checks the whole-family and whole-community box trees. Usage: node forest_check.js era years seed
 const fs = require('fs'), vm = require('vm'), path = require('path');
-const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'census.js', 'edit.js', 'viz.js', 'forest.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n') + '\n;this.__set = w => { W = w; };';
+const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'lives.js', 'census.js', 'edit.js', 'viz.js', 'forest.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n') + '\n;this.__set = w => { W = w; };';
 const ctx = { module: { exports: {} }, console, Date, Math, JSON }; vm.createContext(ctx); vm.runInContext('var W; var esc = s => String(s); var statusWord = p => p.status; ' + src, ctx);
 const E = ctx.module.exports;
 const era = process.argv[2] || 'medieval', years = +(process.argv[3] || 20), seed = +(process.argv[4] || 5);

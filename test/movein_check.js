@@ -1,7 +1,7 @@
 // Checks moving made people into towns: arrival, family, locked death years, unlocking, and the whole town staying consistent.
 // Usage: node movein_check.js [made people per setting] [years to run after] [seed]
 const fs = require('fs'), vm = require('vm'), path = require('path');
-const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'census.js', 'edit.js', 'export.js', 'maker.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
+const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'lives.js', 'census.js', 'edit.js', 'export.js', 'maker.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
 const ctx = { module: { exports: {} }, console, Date, Math, JSON, Blob, Response, CompressionStream, DecompressionStream, TextEncoder, TextDecoder, Uint8Array };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const E = ctx.module.exports;
@@ -69,8 +69,8 @@ for (const era of Object.keys(E.MAKER_SETTINGS)) {
       const m = W.people[main.spouse] || Object.values(W.people).find(q => q.arrived === y0 && q.events.some(e => e.t === 'arrived' && e.text.includes('@' + main.id + '.')) && q.events.some(e => /^(Married|Moved in with) @/.test(e.text) && e.text.includes('@' + main.id)));
       if (!m) bad('wrongFamily', `${main.first}: partner missing`); else { c.partners++; if (main.spouse !== m.id) { c.partnerGoneInYear++; if (probs.length < 10) probs.push(`(info) ${main.first} & ${m.first}: ${m.died != null ? m.first + ' died, ' + m.cause : main.died != null ? main.first + ' died, ' + main.cause : 'split up'}`); } if (m.first !== party.partner.name.split(' ')[0]) bad('wrongFamily', 'partner name'); }
     }
-    if (main.children.length !== party.kids.length) bad('wrongFamily', `${main.first}: ${main.children.length} children, expected ${party.kids.length}`);
-    for (const id of main.children) { const k = W.people[id]; if (k.status === 'departed') c.kidsStayed++; else c.kidsCame++; if (y0 - k.born < 18 && k.status === 'departed') bad('wrongFamily', 'young child stayed behind'); }
+    if (main.children.filter(id => W.people[id].born < y0 || W.people[id].arrived === y0).length !== party.kids.length) bad('wrongFamily', `${main.first}: ${main.children.length} children, expected ${party.kids.length}`);
+    for (const id of main.children) { const k = W.people[id]; if (k.status === 'departed') c.kidsStayed++; else c.kidsCame++; if (y0 - k.born < 18 && k.departedNote === 'stayed behind when the family moved') bad('wrongFamily', 'young child stayed behind'); if (y0 - k.born < 18 && k.status === 'departed' && k.departedNote !== 'stayed behind when the family moved') c.youngLeftLater = (c.youngLeftLater || 0) + 1; }
     // reading and writing: in older settings, schooling other than only an apprenticeship
     if (!W.settings.familySizeLimit) { const edu = P.lists.edu.filter(x => String(x.what || '').trim()); const want = edu.some(x => x.stage ? x.stage !== 'apprentice' : !/apprentic/i.test(x.what)); if (main.literate !== want) bad('literacyWrong', `${main.first}: literate ${main.literate}, schooling says ${want}`); }
     const words = String(P.f.traits.v).split(/,|;|\band\b/).map(x => x.trim().toLowerCase()).filter(Boolean);

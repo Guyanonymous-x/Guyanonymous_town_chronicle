@@ -234,3 +234,21 @@ textarea { font: inherit; padding: .4em .6em; border: 1px solid var(--line); bor
 .mk-how ol { margin: .4rem 0 0; }
 .mk-made { margin-top: 1rem; } .mk-made dl.kv dd { white-space: normal; }
 .mk-before summary { cursor: pointer; color: var(--accent); margin: .4rem 0; } .mk-before p { font-family: var(--serif); line-height: 1.6; }
+
+/* V10: attitudes, who people are, photos */
+.att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 0 1rem; }
+.att-head { display: flex; gap: .6rem; align-items: center; justify-content: space-between; }
+.att-bar { position: relative; display: inline-block; width: 110px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #f0c9c4, #f3e7cf 50%, #cfe6d4); vertical-align: middle; }
+.att-bar.wide { width: 100%; height: 10px; margin: .3rem 0 .5rem; }
+.att-mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .5; }
+.att-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+.att-person .att-lab { display: inline-block; min-width: 13rem; color: var(--muted); }
+.avatar-photo { object-fit: cover; cursor: pointer; }
+.ph-strip { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .6rem; }
+.ph-thumb { margin: 0; width: 120px; cursor: pointer; } .ph-thumb img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.ph-thumb figcaption { font-size: .78rem; color: var(--muted); line-height: 1.25; margin-top: .2rem; }
+.ph-box { max-width: min(92vw, 900px); max-height: 92vh; overflow: auto; position: relative; text-align: left; }
+.ph-box img { max-width: 100%; max-height: 60vh; display: block; margin: 0 auto .6rem; border-radius: 6px; }
+.ph-close { position: absolute; top: .4rem; right: .4rem; }
+.ph-box { font-family: var(--sans); font-size: 1rem; padding: 1rem 1.2rem; }
+.pphoto { float: right; width: 34mm; height: 34mm; object-fit: cover; border-radius: 4px; margin: 0 0 4mm 4mm; }

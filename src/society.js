@@ -467,3 +467,19 @@ function lawsApply(W) {
 }
 
 if (typeof module !== 'undefined') Object.assign(module.exports, { socUpgrade, standingWord });
+
+// ---------- history periods (V10) ----------
+CRIME_RATES.victorian = CRIME_RATES.edwardian = Object.assign({}, CRIME_RATES.frontier);
+JUSTICE.tudor = Object.assign({}, JUSTICE.medieval, { court: 'the justices at the quarter sessions' });
+JUSTICE.georgian = Object.assign({}, JUSTICE.medieval, { court: 'the justices at the quarter sessions', punish: Object.assign({}, JUSTICE.medieval.punish, { theft: [['whipped', 0.45], ['imprisoned', 0.3], ['transported to the colonies', 0.2], ['hanged', 0.05]] }) });
+// English courts: no lynching (hanged instead) and no running people out of town (a spell in jail instead)
+const IND_PUNISH = (j) => Object.assign({}, j, { court: 'the magistrates\' court', punish: Object.fromEntries(Object.entries(j.punish).map(([k, v]) => {
+  const m = new Map(); for (const [w, p] of v) { const w2 = /lynch/.test(w) ? 'hanged' : /run out of town/.test(w) ? 'jailed' : w; m.set(w2, (m.get(w2) || 0) + p); } return [k, [...m.entries()]]; })) });
+JUSTICE.victorian = IND_PUNISH(JUSTICE.frontier);
+JUSTICE.edwardian = IND_PUNISH(JUSTICE.frontier);
+OFFICES.victorian = OFFICES.edwardian = [{ key: 'mayor', title: 'Mayor', how: 'election', term: 1, seats: 1, voters: 'men' }, { key: 'sheriff', title: 'Police inspector', how: 'appointment', term: 5, by: 'mayor', occ: 'sheriff' }];
+RUMORS.tudor = ['hearing Mass in secret', 'consorting with a witch', 'carrying on with a married man', 'cheating at the market scales', 'fathering a child in the next parish'];
+RUMORS.georgian = ['poaching the squire\'s pheasants', 'running up debts in London', 'carrying on with a married man', 'watering the ale', 'being a Jacobite'];
+RUMORS.victorian = RUMORS.edwardian = ['drinking the rent money', 'carrying on with the lodger', 'informing for the mill owners', 'pawning the Sunday best', 'a child born too soon after the wedding'];
+periodFill(CRIME_RATES, CRIME_WORDS, JUSTICE, OFFICES, LEAD_KEY, RUMORS);
+periodFillLists(LAWS);
