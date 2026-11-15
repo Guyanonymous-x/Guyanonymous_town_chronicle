@@ -252,3 +252,12 @@ textarea { font: inherit; padding: .4em .6em; border: 1px solid var(--line); bor
 .ph-close { position: absolute; top: .4rem; right: .4rem; }
 .ph-box { font-family: var(--sans); font-size: 1rem; padding: 1rem 1.2rem; }
 .pphoto { float: right; width: 34mm; height: 34mm; object-fit: cover; border-radius: 4px; margin: 0 0 4mm 4mm; }
+/* V11: choices in Make a person */
+.mk-pick { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 0; } .mk-pick select, .mk-pick input { width: 100%; }
+.mk-ticks { display: flex; flex-wrap: wrap; gap: .15rem .8rem; flex: 1; max-height: 11rem; overflow: auto; padding: .3rem .4rem; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: .88rem; }
+.mk-ticks label { display: inline-flex; gap: .3rem; align-items: center; color: inherit; margin: 0; font-size: .88rem; }
+.mk-ticks input[type=text] { flex-basis: 100%; margin-top: .3rem; }
+.mk-field:has(.mk-ticks) { grid-column: 1 / -1; }
+/* V11: journal */
+.jentry { border-bottom: 1px solid var(--soft); padding: .6rem 0 .8rem; } .jentry h3 { margin: 0; font-family: var(--serif); }
+.jentry p { font-family: var(--serif); line-height: 1.6; margin: .3rem 0 0; }

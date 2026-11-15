@@ -76,7 +76,7 @@ function renderNav() {
   const map = { person: 'people', household: 'households', group: 'groups', workplace: 'work' };
   const on = map[cur] || cur;
   $('#nav').innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === on ? 'on' : ''}">${l}</button>`).join('') +
-    `<div class="sep"></div><div class="note">V10: four new history periods, attitudes, coming out, lasting injuries and photos.</div>`;
+    `<div class="sep"></div><div class="note">V11: choose every detail of your characters, give anyone any role, and read the village journal.</div>`;
   $('#nav').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (b.dataset.nav === 'people') { ui.peopleFilter = {}; ui.peoplePage = 0; } if (b.dataset.nav === 'households') ui.hhMeans = null; nav.stack = []; nav.cur = null; go(b.dataset.nav); });
 }
 function render() {
@@ -89,7 +89,7 @@ function render() {
   const crumbs = nav.stack.length ? `<div class="crumbs"><button class="small" id="bBack">← Back</button></div>` : '';
   let html = '';
   try {
-    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings, maker: viewMaker, attitudes: viewAttitudes, photos: viewPhotos })[v](p);
+    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings, maker: viewMaker, attitudes: viewAttitudes, photos: viewPhotos, roles: viewRoles, journal: viewJournal })[v](p);
   } catch (err) { console.error(err); html = `<div class="card err">Something went wrong showing this page: ${esc(err.message)}</div>`; }
   $('#main').innerHTML = crumbs + html;
   if ($('#bBack')) $('#bBack').onclick = back;
@@ -113,6 +113,7 @@ function renderCreate() {
       <h3 style="margin-top:1.2rem">2. The basics</h3>
       <div class="formrow">
         <label>Name of the ${esc(era.townWord)}<span><input type="text" id="cName" value="${esc(createState.name || era.placeNames[0])}" size="22"> <button class="small" id="cNameDice" title="Suggest a name">Suggest</button></span></label>
+        <label>Start with<select id="cMine"><option value="">a village of people (and add your own later)</option><option value="1" ${createState.onlyMine ? 'selected' : ''}>only my characters (an empty village)</option></select></label>
         <label>Number of people (20–1000)<span><input type="number" id="cPop" min="20" max="1000" value="${createState.pop || 500}" style="width:90px"> <input type="range" id="cPopR" min="20" max="1000" value="${createState.pop || 500}"></span></label>
         <label>Random seed (same seed = same town)<span><input type="number" id="cSeed" value="${createState.seed || Math.floor(Math.random() * 1e6)}" style="width:110px"> <button class="small" id="cSeedDice">New</button></span></label>
       </div>
@@ -130,7 +131,7 @@ function renderCreate() {
     </div>
     <div class="card"><h3>Or open a saved community</h3><p class="muted small">Open a <code>.town.json</code> or compressed <code>.town.json.gz</code> file you saved earlier.</p><button id="cOpen">Open a file…</button></div>
   </div>`;
-  const keep = () => { createState.name = $('#cName').value; createState.pop = +$('#cPop').value; createState.seed = +$('#cSeed').value; if ($('#cGather')) createState.gathering = $('#cGather').value; if ($('#cPerfect')) createState.perfect = $('#cPerfect').checked; readSettings(); };
+  const keep = () => { createState.onlyMine = !!($('#cMine') && $('#cMine').value); createState.name = $('#cName').value; createState.pop = +$('#cPop').value; createState.seed = +$('#cSeed').value; if ($('#cGather')) createState.gathering = $('#cGather').value; if ($('#cPerfect')) createState.perfect = $('#cPerfect').checked; readSettings(); };
   document.querySelectorAll('[data-era]').forEach(c => c.onclick = () => { keep(); const old = ERAS[createState.era]; createState.era = c.dataset.era; if (!createState.name || old.placeNames.includes(createState.name)) createState.name = ERAS[createState.era].placeNames[0]; renderCreate(); });
   $('#cNameDice').onclick = () => { const n = era.placeNames; $('#cName').value = n[(n.indexOf($('#cName').value) + 1) % n.length]; };
   $('#cSeedDice').onclick = () => { $('#cSeed').value = Math.floor(Math.random() * 1e6); };
@@ -148,9 +149,10 @@ function renderCreate() {
         const opts = { era: era.key, population: pop, seed: +$('#cSeed').value || 1, name, settings: createState.settings, options: {} };
         if (drop) { opts.options.gathering = createState.gathering || drop.gathering.default; opts.options.perfectFirstYear = createState.perfect !== false; }
         W = createCommunity(opts); upgradeWorld(W); undoStack.length = 0;
+        if (createState.onlyMine) emptyVillage(W); // V11: a village of only your own characters
         dirty = true; fileHandle = null; nav.stack = []; nav.cur = null;
-        render();
-        toast(`${name} is ready — ${pop} people. Remember to save.`);
+        if (createState.onlyMine) { nav.cur = { view: 'maker', params: {} }; render(); toast(`${name} is ready and empty. Make your characters and use “Move in now”, then give them roles on the Roles page.`, 7000); }
+        else { render(); toast(`${name} is ready — ${pop} people. Remember to save.`); }
       } catch (err) { console.error(err); alert('Sorry, creating the community failed: ' + err.message); }
       done();
     }, 40);

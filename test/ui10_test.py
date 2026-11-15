@@ -22,7 +22,7 @@ async def main():
             await pg.click('[data-nav=maker]'); await pg.wait_for_timeout(150)
             if era == 'medieval': await pg.screenshot(path=f'{SHOTS}/100-maker-empty.png', full_page=True)
             # type a first name (locks itself), then generate
-            await pg.fill('[data-mpath="f.firstName"]', 'Wendeline'); await pg.wait_for_timeout(50)
+            await pg.select_option('[data-msel="f.firstName"]', '__other'); await pg.fill('input[data-mpath="f.firstName"]', 'Wendeline'); await pg.press('input[data-mpath="f.firstName"]', 'Tab'); await pg.wait_for_timeout(50)
             await pg.click('#mkGen'); await pg.wait_for_timeout(150); totals['generated'] += 1
             if await pg.evaluate("ui.maker.P.f.firstName.v") == 'Wendeline' and await pg.evaluate("ui.maker.P.f.firstName.l"): totals['kept typed name'] += 1
             if await pg.query_selector('#mkChecks .mk-warn'): totals['problems shown'] += 1
@@ -63,8 +63,8 @@ async def main():
         await pg.click('.eracard[data-era=medieval]'); await pg.fill('#cPop', '200'); await pg.click('#cGo'); await pg.wait_for_selector('.stats')
         y0 = await pg.evaluate("W.year")
         await pg.click('[data-nav=maker]')
-        await pg.fill('[data-mpath="f.firstName"]', 'Wendeline'); await pg.select_option('[data-mpath="f.gender"]', 'Woman')
-        await pg.fill('[data-mpath="f.birthYear"]', str(y0 - 36)); await pg.fill('[data-mpath="f.deathYear"]', str(y0 + 5)); await pg.press('[data-mpath="f.deathYear"]', 'Tab')
+        await pg.select_option('[data-msel="f.firstName"]', '__other'); await pg.fill('input[data-mpath="f.firstName"]', 'Wendeline'); await pg.press('input[data-mpath="f.firstName"]', 'Tab'); await pg.select_option('[data-mpath="f.gender"]', 'Woman')
+        await pg.select_option('[data-msel="f.birthYear"]', str(y0 - 36)); await pg.select_option('[data-msel="f.deathYear"]', str(y0 + 5))
         for k in range(30):  # generate until she has a partner, so the family part is tried
             await pg.click('#mkGen'); await pg.wait_for_timeout(60)
             if await pg.evaluate("!!makerParty(W, ui.maker.P).partner && makerParty(W, ui.maker.P).kids.length > 0"): break

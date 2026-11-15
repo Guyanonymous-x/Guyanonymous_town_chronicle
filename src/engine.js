@@ -45,6 +45,7 @@ function fullName(p) { return p ? `${p.first} ${p.last}` : 'unknown'; }
 function addEvent(W, p, y, type, text, extra) {
   const e = { y, t: type, text };
   if (W && W._s != null) e.s = W._s;
+  if (e.s != null) e.m = e.s * 3 + ((p.id * 7 + p.events.length * 13 + y) % 3); // V11: the month, within its season
   if (extra) Object.assign(e, extra);
   p.events.push(e);
   return e;

@@ -188,7 +188,7 @@ function livesYear(W, _rng, y, R) {
   for (const p of people) {
     if (!p.occId || !p.conditions || !p.conditions.length) continue;
     const o = (eraOf(W).occupations || []).find(x => x.id === p.occId);
-    if (o && !canDoWork(p, o)) {
+    if (o && !canDoWork(p, o) && p.chosenRole !== p.occId) { // (V11: a role you chose for them is left alone)
       const c = p.conditions.find(c => CONDITION_EFFECTS[c] && CONDITION_EFFECTS[c].cannot && CONDITION_EFFECTS[c].cannot.includes(o.skill));
       leaveJob(W, rng, p, y, `could no longer do the work after ${c}`);
       p.formerOccupation = p.occupation; p.occId = null;

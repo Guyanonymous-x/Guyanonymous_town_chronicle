@@ -218,6 +218,7 @@ function yearCrime(W, rng, y, R) {
         const pool = people.filter(q => q.id !== culprit.id && q.household !== culprit.household && ageOf(q, y) >= 16 && isAlive(q));
         if (type === 'theft' || type === 'fraud') { const rich = pool.filter(q => W.households[q.household] && W.households[q.household].wealth >= 45); victim = rng.pick(rich.length ? rich : pool); }
         else victim = rng.pick(pool);
+        if (!victim) continue; // V11 fix: in a very small village there may be nobody to rob
       }
       if (victim && (!isAlive(victim) || victim.status !== 'resident')) continue;
       commitCrime(W, rng, y, R, type, culprit, victim);

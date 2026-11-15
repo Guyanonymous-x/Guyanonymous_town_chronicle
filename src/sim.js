@@ -211,6 +211,7 @@ function advanceYear(W) {
   }
   W._s = null;
   if (typeof livesYear === 'function') livesYear(W, rng, y, R); // V10: inner lives, attitudes, lasting injuries
+  if (typeof journalYear === 'function') journalYear(W, y); // V11: the village journal, one entry a month
   yearRomance(W, rng, y, R);
   yearSocial(W, rng, y, R);
   yearGossip(W, rng, y, R);
@@ -902,8 +903,8 @@ function chooseJob(W, rng, p, y, slots) {
   if (!o) { const fill = slots.occs.filter(x => x.filler && (x.sex === 'any' || x.sex === p.sex || S.genderRoles !== 'strict') && a >= x.min); o = fill.length ? rng.pick(fill) : null; }
   return o;
 }
-function startJob(W, rng, p, o, y, why, R) {
-  if (typeof canDoWork === 'function' && !canDoWork(p, o)) return; // V10: work their lasting injuries no longer allow
+function startJob(W, rng, p, o, y, why, R, force) {
+  if (!force && typeof canDoWork === 'function' && !canDoWork(p, o)) return; // V10: work their lasting injuries no longer allow (V11: unless you choose it)
   if (p.workplace) leaveJob(W, rng, p, y, 'moved on');
   const was = p.occupation;
   p.occId = o.id; p.occupation = o.name; p.jobSince = y;

@@ -239,6 +239,9 @@ function workbookSheets(W, opts) {
       ...ey.map(y => { const e = W.econ.history[y]; return [y, (e.weather || []).join('; '), e.food != null ? Math.round(e.food * 100) : '', e.price != null ? Math.round(e.price * 100) : '', e.economy != null ? Math.round(e.economy * 100) : '', e.famine ? 'Yes' : '', (e.pests || []).map(x => typeof x === 'string' ? x : x.name || JSON.stringify(x)).join('; '), (e.hardHit || []).map(x => x.job).join('; '), (e.goodYear || []).map(x => x.job || x).join('; '), ...goods.map(g => e.yields && e.yields[g] != null ? Math.round(e.yields[g] * 100) : '')]; })] });
   }
   if (typeof makerSheet === 'function') { const ms = makerSheet(W, people); if (ms) S.push(ms); }
+  if (W.journal && W.journal.entries && W.journal.entries.length) { // V11: the village journal
+    S.push({ name: 'Journal', rows: [['Date', 'About', 'Writer ID', 'Writer', 'Age', 'Written down by', 'Entry'], ...W.journal.entries.map(e => [e.date, `${MONTHS[e.m]}`, e.w, W.people[e.w] ? `${W.people[e.w].first} ${W.people[e.w].last}` : '', e.age, e.scribe && W.people[e.scribe] ? `${W.people[e.scribe].first} ${W.people[e.scribe].last}` : '', plainText(W, e.paras.join(' '))])] });
+  }
   return S;
 }
 async function exportWorkbook(W, opts) { const sheets = workbookSheets(W, opts); return { blob: await makeZip(workbookFiles(sheets)), sheets }; }

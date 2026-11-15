@@ -259,6 +259,15 @@ textarea { font: inherit; padding: .4em .6em; border: 1px solid var(--line); bor
 .ph-close { position: absolute; top: .4rem; right: .4rem; }
 .ph-box { font-family: var(--sans); font-size: 1rem; padding: 1rem 1.2rem; }
 .pphoto { float: right; width: 34mm; height: 34mm; object-fit: cover; border-radius: 4px; margin: 0 0 4mm 4mm; }
+/* V11: choices in Make a person */
+.mk-pick { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 0; } .mk-pick select, .mk-pick input { width: 100%; }
+.mk-ticks { display: flex; flex-wrap: wrap; gap: .15rem .8rem; flex: 1; max-height: 11rem; overflow: auto; padding: .3rem .4rem; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: .88rem; }
+.mk-ticks label { display: inline-flex; gap: .3rem; align-items: center; color: inherit; margin: 0; font-size: .88rem; }
+.mk-ticks input[type=text] { flex-basis: 100%; margin-top: .3rem; }
+.mk-field:has(.mk-ticks) { grid-column: 1 / -1; }
+/* V11: journal */
+.jentry { border-bottom: 1px solid var(--soft); padding: .6rem 0 .8rem; } .jentry h3 { margin: 0; font-family: var(--serif); }
+.jentry p { font-family: var(--serif); line-height: 1.6; margin: .3rem 0 0; }
 
 </style>
 </head>
@@ -1178,6 +1187,7 @@ function fullName(p) { return p ? `${p.first} ${p.last}` : 'unknown'; }
 function addEvent(W, p, y, type, text, extra) {
   const e = { y, t: type, text };
   if (W && W._s != null) e.s = W._s;
+  if (e.s != null) e.m = e.s * 3 + ((p.id * 7 + p.events.length * 13 + y) % 3); // V11: the month, within its season
   if (extra) Object.assign(e, extra);
   p.events.push(e);
   return e;
@@ -2689,6 +2699,7 @@ function advanceYear(W) {
   }
   W._s = null;
   if (typeof livesYear === 'function') livesYear(W, rng, y, R); // V10: inner lives, attitudes, lasting injuries
+  if (typeof journalYear === 'function') journalYear(W, y); // V11: the village journal, one entry a month
   yearRomance(W, rng, y, R);
   yearSocial(W, rng, y, R);
   yearGossip(W, rng, y, R);
@@ -3380,8 +3391,8 @@ function chooseJob(W, rng, p, y, slots) {
   if (!o) { const fill = slots.occs.filter(x => x.filler && (x.sex === 'any' || x.sex === p.sex || S.genderRoles !== 'strict') && a >= x.min); o = fill.length ? rng.pick(fill) : null; }
   return o;
 }
-function startJob(W, rng, p, o, y, why, R) {
-  if (typeof canDoWork === 'function' && !canDoWork(p, o)) return; // V10: work their lasting injuries no longer allow
+function startJob(W, rng, p, o, y, why, R, force) {
+  if (!force && typeof canDoWork === 'function' && !canDoWork(p, o)) return; // V10: work their lasting injuries no longer allow (V11: unless you choose it)
   if (p.workplace) leaveJob(W, rng, p, y, 'moved on');
   const was = p.occupation;
   p.occId = o.id; p.occupation = o.name; p.jobSince = y;
@@ -4561,6 +4572,7 @@ function yearCrime(W, rng, y, R) {
         const pool = people.filter(q => q.id !== culprit.id && q.household !== culprit.household && ageOf(q, y) >= 16 && isAlive(q));
         if (type === 'theft' || type === 'fraud') { const rich = pool.filter(q => W.households[q.household] && W.households[q.household].wealth >= 45); victim = rng.pick(rich.length ? rich : pool); }
         else victim = rng.pick(pool);
+        if (!victim) continue; // V11 fix: in a very small village there may be nobody to rob
       }
       if (victim && (!isAlive(victim) || victim.status !== 'resident')) continue;
       commitCrime(W, rng, y, R, type, culprit, victim);
@@ -5017,7 +5029,7 @@ function livesYear(W, _rng, y, R) {
   for (const p of people) {
     if (!p.occId || !p.conditions || !p.conditions.length) continue;
     const o = (eraOf(W).occupations || []).find(x => x.id === p.occId);
-    if (o && !canDoWork(p, o)) {
+    if (o && !canDoWork(p, o) && p.chosenRole !== p.occId) { // (V11: a role you chose for them is left alone)
       const c = p.conditions.find(c => CONDITION_EFFECTS[c] && CONDITION_EFFECTS[c].cannot && CONDITION_EFFECTS[c].cannot.includes(o.skill));
       leaveJob(W, rng, p, y, `could no longer do the work after ${c}`);
       p.formerOccupation = p.occupation; p.occId = null;
@@ -5738,6 +5750,9 @@ function workbookSheets(W, opts) {
       ...ey.map(y => { const e = W.econ.history[y]; return [y, (e.weather || []).join('; '), e.food != null ? Math.round(e.food * 100) : '', e.price != null ? Math.round(e.price * 100) : '', e.economy != null ? Math.round(e.economy * 100) : '', e.famine ? 'Yes' : '', (e.pests || []).map(x => typeof x === 'string' ? x : x.name || JSON.stringify(x)).join('; '), (e.hardHit || []).map(x => x.job).join('; '), (e.goodYear || []).map(x => x.job || x).join('; '), ...goods.map(g => e.yields && e.yields[g] != null ? Math.round(e.yields[g] * 100) : '')]; })] });
   }
   if (typeof makerSheet === 'function') { const ms = makerSheet(W, people); if (ms) S.push(ms); }
+  if (W.journal && W.journal.entries && W.journal.entries.length) { // V11: the village journal
+    S.push({ name: 'Journal', rows: [['Date', 'About', 'Writer ID', 'Writer', 'Age', 'Written down by', 'Entry'], ...W.journal.entries.map(e => [e.date, `${MONTHS[e.m]}`, e.w, W.people[e.w] ? `${W.people[e.w].first} ${W.people[e.w].last}` : '', e.age, e.scribe && W.people[e.scribe] ? `${W.people[e.scribe].first} ${W.people[e.scribe].last}` : '', plainText(W, e.paras.join(' '))])] });
+  }
   return S;
 }
 async function exportWorkbook(W, opts) { const sheets = workbookSheets(W, opts); return { blob: await makeZip(workbookFiles(sheets)), sheets }; }
@@ -6684,7 +6699,7 @@ let townFit = null;
 const lifeweaverSettingData = settingData;
 settingData = function (setting, era) { const d = lifeweaverSettingData(setting, era); return townFit ? townFit(d) : d; };
 return {
-  generate, buildStory, buildTimeline, checkPerson, blankPerson, settingData, ERAS, PACKS, FIELDS, LISTNAMES, LISTS, REL_OPTIONS,
+  generate, buildStory, buildTimeline, checkPerson, blankPerson, settingData, ERAS, PACKS, FIELDS, LISTNAMES, LISTS, REL_OPTIONS, COMMON,
   setRandom: f => { rnd = f || Math.random; },
   setTownFit: f => { townFit = f || null; }
 };
@@ -6791,8 +6806,8 @@ function makerMoveProblems(W, P, chosen) {
   if (!makerAvailable(W)) return ['Making a person isn’t ready yet for this setting.'];
   const out = makerProblems(W, P).slice();
   const g = P.f.gender.v;
-  if (g === 'Non-binary') out.push('Town Chronicle can’t have non-binary people yet (that comes in a later step). Choose Man or Woman to move them in now.');
-  else if (g !== 'Man' && g !== 'Woman') out.push('Choose whether they are a man or a woman.');
+  if (g === 'Non-binary') { if (!(P.tc && P.tc.sex)) out.push('Choose their body (male or female, for pregnancy and births) under “In the town”.'); }
+  else if (g !== 'Man' && g !== 'Woman') out.push('Choose whether they are a man, a woman or non-binary.');
   if (!String(P.f.firstName.v || '').trim()) out.push('They need a first name.');
   const { partner, kids } = makerParty(W, P), y = makerYear(W);
   for (const r of [partner, ...kids].filter(Boolean)) {
@@ -6835,7 +6850,7 @@ function makerMoveIn(W, rng, y, s, R, pl) {
   const pr = makerMoveProblems(W, P, pl.sexes); if (pr.length) return `${makerPersonName(P)} could not come: ${pr[0]}`;
   const v = k => String(P.f[k].v || '').trim();
   const culture = rng.weighted(era.cultures);
-  const sex = v('gender') === 'Man' ? 'm' : 'f';
+  const sex = (P.tc && P.tc.sex) || (v('gender') === 'Man' ? 'm' : 'f');
   const main = makePerson(W, rng, { born: +v('birthYear'), sex, culture, arrived: y, first: v('firstName'), last: v('lastName') || undefined });
   const { partner, kids } = makerParty(W, P);
   const split = n => { const w = String(n || '').trim().split(/\s+/); return { first: w[0], last: w.slice(1).join(' ') || main.last }; };
@@ -6868,6 +6883,7 @@ function makerMoveIn(W, rng, y, s, R, pl) {
     turning: P.lists.turning.map(r => ({ year: r.year, what: r.what, change: r.change })), own: P.lists.custom.map(r => ({ year: r.year, what: r.what }))
   };
 
+  makerApplyTc(W, P, main, y); // V11: the Town Chronicle details you chose
   // partner
   let mate = null;
   if (partner) {
@@ -6911,7 +6927,8 @@ function makerMoveIn(W, rng, y, s, R, pl) {
 
   // a home, minds, skills and work, as for other newcomers
   newHousehold(W, rng, home, y);
-  for (const q of home) addEvent(W, q, y, 'arrived', `Came to ${W.name}${q === main ? '' : ' with @' + main.id}.`);
+  makerApplyWealth(W, P, W.households[main.household]);
+  for (const q of home) addEvent(W, q, y, 'arrived', `Came to ${W.name}${q === main ? '' : ' with @' + main.id}.`, s != null ? { m: s * 3 } : null); // the family arrives together, in the first month of the season
   for (const q of home) { mindOf(q); q.skills = {}; for (const k of Object.keys(q.aptitude)) q.skills[k] = Math.round(q.aptitude[k] * 0.35 + Math.min(20, ageOf(q, y) - 10)); q.hist = []; }
   assignNewcomerJobs(W, rng, home, y, R);
   // their own job, if the town has it and there is an opening (agreed)
@@ -6981,6 +6998,285 @@ function makerSheet(W, people) {
   return { name: 'Made people', rows: [['ID', 'Name', ...cols, 'Life story before coming'], ...made.map(p => { const d = Object.fromEntries(makerDetails(W, p)); return [p.id, `${p.first} ${p.last}`, ...cols.map(c => (d[c] || '').replace(/\n/g, '; ')), String(p.made.story || '')]; })] };
 }
 if (typeof module !== 'undefined') Object.assign(module.exports, { makerDetails, makerDetailText, makerSheet });
+
+/* ---------- V11: choices for every detail ---------- */
+// Single choices get a drop-down (plus "Other…"); these get tick boxes because a person can have several.
+const MAKER_MULTI = ['traits', 'likes', 'fears', 'values', 'features'];
+const makerPron = P => P.f.gender.v === 'Man' ? 'his' : P.f.gender.v === 'Woman' ? 'her' : 'their';
+// The options for one of LifeWeaver's details, fitted to the town (names, places and causes come from both apps' lists).
+function makerOptions(W, P, key) {
+  const S = withTown(W, null, () => LW.settingData(P.setting, P.era)), C = LW.COMMON, y = makerYear(W), fill = l => l.map(x => String(x).replace(/\{P\}/g, makerPron(P)).replace(/\{place\}/g, (S.places && S.places[0]) || 'the old kingdom'));
+  const g = P.f.gender.v, uniq = l => [...new Set(l.filter(Boolean))];
+  const range = (a, b, st = 1) => { const o = []; for (let i = a; st > 0 ? i <= b : i >= b; i += st) o.push(String(i)); return o; };
+  switch (key) {
+    case 'firstName': return uniq(g === 'Man' ? S.names.m : g === 'Woman' ? S.names.f : [...S.names.m, ...S.names.f]).sort();
+    case 'lastName': return uniq(S.sur).sort();
+    case 'birthYear': return range(y, y - 95, -1);
+    case 'deathYear': return range(y, y + 80);
+    case 'birthPlace': case 'home': return uniq([W.name, ...(S.places || [])]);
+    case 'deathCause': return uniq([...(S.deaths || []), ...((ERAS[W.era].illnesses) || []), ...((ERAS[W.era].oldCauses) || [])]);
+    case 'height': return range(140, 200, 2).map(c => { const i = Math.round(+c / 2.54); return `${c} cm (${Math.floor(i / 12)}'${i % 12}")`; });
+    case 'build': return fill(C.builds);
+    case 'hair': return uniq(C.hairS.flatMap(st => C.hairC.map(c => (st ? st + ' ' : '') + c)).map(x => x[0].toUpperCase() + x.slice(1)));
+    case 'eyes': return fill(C.eyes);
+    case 'traits': case 'likes': case 'fears': case 'values': return uniq(fill(C[key]));
+    case 'features': return uniq(fill([...(C.features || []), ...(S.features || [])]));
+    case 'quirk': return fill(C.quirks).map(x => x[0].toUpperCase() + x.slice(1));
+    case 'hopes': return uniq(fill([...C.hopes, ...(S.hopes || [])])).map(x => x[0].toUpperCase() + x.slice(1));
+    case 'dreams': return uniq(fill([...C.dreams, ...(S.dreams || [])])).map(x => x[0].toUpperCase() + x.slice(1));
+    case 'regret': return fill(C.regrets).map(x => x[0].toUpperCase() + x.slice(1));
+    default: return null;
+  }
+}
+// Town Chronicle's own details, which LifeWeaver didn't have. Blank means "let the town decide".
+const MK_LEVELS = [['10', 'very low'], ['30', 'low'], ['50', 'average'], ['70', 'high'], ['90', 'very high']];
+const MK_TRAITS = { O: 'Curiosity (openness)', C: 'Carefulness (conscientiousness)', E: 'Outgoingness (extraversion)', A: 'Warmth (agreeableness)', N: 'Worry (nervousness)' };
+const MK_SKILLS = { farming: 'Farming', craft: 'Crafts', trade: 'Trade', learning: 'Learning', healing: 'Healing', fighting: 'Fighting', animals: 'Animals', outdoors: 'Outdoors', arts: 'Arts', leadership: 'Leadership', labor: 'Heavy labour', magic: 'Magic', tech: 'Technology', science: 'Science' };
+function makerTcFields(W) {
+  const era = ERAS[W.era];
+  const skills = Object.keys(MK_SKILLS).filter(k => (era.occupations || []).some(o => o.skill === k) || ['learning', 'arts', 'leadership'].includes(k));
+  const conds = [...new Set([...(era.conditions || []).map(c => c[0]), ...(typeof LASTING !== 'undefined' ? LASTING : []), ...(typeof LASTING_SEVERE !== 'undefined' ? LASTING_SEVERE : [])])];
+  return [
+    { key: 'faith', label: 'Faith', g: 'town', options: Object.keys(era.faiths || {}).map(x => [x, x]) },
+    { key: 'culture', label: 'Background (culture)', g: 'town', options: Object.keys(era.cultures || {}).map(c => [c, (CULTURES[c] && CULTURES[c].label) || c]) },
+    { key: 'wealth', label: 'Household wealth', g: 'town', options: [['6', 'destitute'], ['20', 'poor'], ['36', 'getting by'], ['55', 'comfortable'], ['75', 'well-off'], ['92', 'rich']] },
+    { key: 'literate', label: 'Can read and write', g: 'town', options: [['yes', 'yes'], ['no', 'no']] },
+    { key: 'sex', label: 'Body (for pregnancy and births)', g: 'inside', options: [['m', 'male'], ['f', 'female']], hint: 'Needed for non-binary people. If it differs from Man or Woman above, they are a trans man or woman.' },
+    { key: 'livesAs', label: 'Lives as', g: 'inside', options: [['man', 'a man'], ['woman', 'a woman'], ['nonbinary', 'non-binary']] },
+    { key: 'feels', label: 'Feels, inside', g: 'inside', options: [['man', 'a man'], ['woman', 'a woman'], ['nonbinary', 'non-binary']], hint: 'If this differs from who they live as, they know it but hide it.' },
+    { key: 'orientation', label: 'Drawn to', g: 'inside', options: [['straight', 'the other sex'], ['gay', 'the same sex'], ['bisexual', 'both']] },
+    { key: 'open', label: 'Open about who they love', g: 'inside', options: [['open', 'open'], ['hiding', 'hiding it']] },
+    ...Object.keys(MK_TRAITS).map(k => ({ key: 'trait' + k, label: MK_TRAITS[k], g: 'scores', options: MK_LEVELS })),
+    { key: 'intellect', label: 'Cleverness', g: 'scores', options: MK_LEVELS },
+    ...skills.map(k => ({ key: 'apt_' + k, label: 'Talent: ' + MK_SKILLS[k], g: 'talents', options: MK_LEVELS })),
+    { key: 'health', label: 'Health', g: 'health', options: [['20', 'poor'], ['45', 'fair'], ['70', 'good'], ['92', 'excellent']] },
+    { key: 'conditions', label: 'Conditions and lasting injuries', g: 'health', multi: true, options: conds.map(c => [c, c]) }
+  ];
+}
+// Put the chosen Town Chronicle details onto the new townsperson (called by makerMoveIn).
+function makerApplyTc(W, P, p, y) {
+  const t = P.tc || {}, has = k => t[k] != null && t[k] !== '' && !(Array.isArray(t[k]) && !t[k].length);
+  if (has('faith')) p.faith = t.faith;
+  if (has('culture') && CULTURES[t.culture]) p.culture = t.culture;
+  if (has('literate')) p.literate = t.literate === 'yes';
+  for (const k of Object.keys(MK_TRAITS)) if (has('trait' + k)) p.traits[k] = +t['trait' + k];
+  if (has('intellect')) p.intellect = +t.intellect;
+  for (const k of Object.keys(p.aptitude || {})) if (has('apt_' + k)) p.aptitude[k] = +t['apt_' + k];
+  if (has('health')) p.health = +t.health;
+  if (has('conditions')) p.conditions = [...new Set([...(p.conditions || []), ...t.conditions])];
+  if (has('orientation')) { p.orientation = t.orientation; if (t.orientation === 'straight') delete p.so; else p.so = { realise: p.born + 14, realised: Math.min(y, p.born + 15), out: t.open === 'hiding' ? null : y }; }
+  const raised = p.sex === 'm' ? 'man' : 'woman', lives = has('livesAs') ? t.livesAs : ({ Man: 'man', Woman: 'woman', 'Non-binary': 'nonbinary' })[P.f.gender.v] || raised, feels = has('feels') ? t.feels : lives;
+  if (lives !== raised) { p.inner = { felt: lives, realise: p.born + 10, realised: Math.min(y, p.born + 12), out: y }; p.gender = lives; }       // open about it
+  else if (feels !== raised) p.inner = { felt: feels, realise: p.born + 10, realised: Math.min(y, p.born + 12), out: null };                     // knows, but hides it
+}
+function makerApplyWealth(W, P, home) { const t = P.tc || {}; if (t.wealth != null && t.wealth !== '' && home) home.wealth = +t.wealth; }
+if (typeof module !== 'undefined') Object.assign(module.exports, { makerOptions, makerTcFields, makerApplyTc, MAKER_MULTI });
+
+// ================= V11: roles (who does which work) and villages of your own characters =================
+
+// A fresh report for changes made outside a year's run (the year's own report is made in advanceYear).
+const blankReport = y => ({ y, births: 0, deaths: 0, infantDeaths: 0, causes: {}, marriages: 0, divorces: 0, arrivals: 0, departures: 0, outbreaks: [], illnesses: 0, injuries: 0, miscarriages: 0, newFriends: 0, quarrels: 0, reconciled: 0, jobsStarted: 0, jobsLost: 0, retired: 0, items: [] });
+const editRng = W => new Rng((W.seed * 9301 + W.year * 49297 + (W.edits ? W.edits.length : 0) * 233) >>> 0);
+
+// Every role in the town: its jobs, or in a dropped world the roles people have taken on.
+function allRoles(W) {
+  if (W.era === 'dropped') return droppedRoles(W).map(r => ({ id: 'role_' + r.name.toLowerCase().replace(/[^a-z]+/g, '_'), name: r.name, skill: r.skill, min: 12, sex: 'any', dropped: true }));
+  return eraOf(W).occupations.filter(o => !o.spouseOf);
+}
+function officeFor(W, o) { return (OFFICES[W.era] || []).find(x => x.occ === o.id || (x.how === 'heir' && x.occ === o.id)); }
+function roleHolders(W, o) { return lives(W).filter(p => p.occId === o.id); }
+
+// Why someone might not fit a role. You can still put them there (agreed): these are only warnings.
+function roleWarnings(W, p, o) {
+  const y = W.year, a = ageOf(p, y), S = W.settings, out = [];
+  if (a < (o.min || 0)) out.push(`${p.first} is ${a}; this work usually starts at ${o.min}.`);
+  if (o.max && a > o.max) out.push(`${p.first} is ${a}, older than people usually do this work (${o.max}).`);
+  if (o.sex && o.sex !== 'any' && o.sex !== p.sex && S.genderRoles === 'strict') out.push(`In this setting only ${o.sex === 'm' ? 'men' : 'women'} do this work.`);
+  if (o.celibate && (p.spouse || p.children.length)) out.push('This work is for someone unmarried and without children.');
+  if (o.lit && !p.literate) out.push(`${p.first} can't read or write, which this work needs.`);
+  if (typeof canDoWork === 'function' && !canDoWork(p, o)) out.push(`${p.first}'s ${(p.conditions || []).find(c => CONDITION_EFFECTS[c] && CONDITION_EFFECTS[c].cannot && CONDITION_EFFECTS[c].cannot.includes(o.skill))} rules this work out.`);
+  if (p.status !== 'resident' || !isAlive(p)) out.push(`${p.first} is not living in the town.`);
+  return out;
+}
+// Put someone in a role now. Offices go through the town's own office rules; ordinary work skips the usual limits.
+function assignRole(W, p, o, why) {
+  const y = W.year, rng = editRng(W), R = blankReport(y);
+  if (p.occId === o.id) return `${p.first} already does that.`;
+  const off = officeFor(W, o);
+  if (off && !o.dropped) { doPlan(W, rng, y, 0, R, { kind: 'office', who: p.id, office: off.key, reason: why || 'given the role by the storyteller' }); }
+  else if (o.dropped) { if (p.workplace) leaveJob(W, rng, p, y, 'moved to other work'); p.occId = o.id; p.occupation = o.name; addEvent(W, p, y, 'work', `Took on work as ${/^[aeiou]/i.test(o.name) ? 'an' : 'a'} ${o.name.toLowerCase()}.`); }
+  else {
+    if (p.occId) { leaveJob(W, rng, p, y, 'moved to other work'); p.formerOccupation = p.occupation; }
+    startJob(W, rng, p, o, y, why || 'given the work by the storyteller', R, true);
+  }
+  if (p.occId !== o.id) return `${p.first} could not be given that role.`;
+  p.chosenRole = o.id;
+  logEdit(W, `Gave @${p.id} the role of ${o.name.toLowerCase()}.`);
+  return null;
+}
+function removeRole(W, p) {
+  if (!p.occId) return `${p.first} has no role.`;
+  const was = p.occupation, rng = editRng(W);
+  leaveJob(W, rng, p, W.year, 'was taken off the work'); p.formerOccupation = was; p.occId = null;
+  p.occupation = W.settings.familySizeLimit ? 'Unemployed (looking for work)' : 'Odd jobs';
+  addEvent(W, p, W.year, 'work', `Stopped working as ${/^[aeiou]/i.test(was) ? 'an' : 'a'} ${was.toLowerCase()}.`);
+  logEdit(W, `Took @${p.id} off the role of ${was.toLowerCase()}.`);
+  return null;
+}
+
+// A village with nobody in it yet: the buildings, venues, jobs and offices stay; every person goes.
+// No strangers arrive by themselves (arrivals set to 0; change it in Era settings). Births, deaths and everything else carry on.
+function emptyVillage(W) {
+  W.people = {}; W.households = {}; W.rels = {}; W.groups = {}; W.feuds = {};
+  REL_INDEX = null;
+  for (const w of Object.values(W.workplaces)) { w.members = []; w.owner = null; }
+  for (const o of Object.values(W.soc.offices)) { o.holders = []; o.history = []; o.next = W.year; o.since = W.year; }
+  W.soc.secrets = {}; W.soc.crimes = []; W.soc.elections = []; W.soc.approval = {};
+  W.log = []; W.yearStats = {}; W.census = {}; W.censusDetail = {}; W.chronicle = {}; W.edits = [];
+  W.settings.arrivals = 0; W.onlyMine = true; W._livesReady = false;
+  W.targetPopulation = 0;
+  upgradeWorld(W);
+  return W;
+}
+// Move a made person in straight away (instead of as a plan), for example into an empty village.
+function makerMoveInNow(W, P, sexes, s) {
+  const err = makerMoveProblems(W, P, sexes); if (err.length) return err[0];
+  W.nextMadeNow = (W.nextMadeNow || 0) + 1;
+  const pl = { id: 'now' + W.nextMadeNow, kind: 'madePerson', s: s || 0, person: JSON.parse(JSON.stringify(P)), sexes: Object.assign({}, sexes || {}) };
+  const was = W._s; W._s = s || 0; // the arrival happens in the chosen season, so the journal can place it
+  let msg; try { msg = makerMoveIn(W, editRng(W), W.year, s || 0, blankReport(W.year), pl); } finally { W._s = was; }
+  logEdit(W, `${makerPersonName(P)} moved in straight away.`);
+  return /could not come/.test(msg) ? msg : null;
+}
+if (typeof module !== 'undefined') Object.assign(module.exports, { allRoles, roleHolders, roleWarnings, assignRole, removeRole, emptyVillage, makerMoveInNow, officeFor });
+
+// ================= V11: months, and the village journal =================
+// The chronicle year runs spring to winter, so its months run March to February (January and February fall in the next calendar year).
+const MONTHS = ['March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February'];
+function monthOf(e, p, i) { if (e.m != null) return e.m; const h = (p.id * 7 + i * 13 + e.y) % 12; return e.s != null ? e.s * 3 + (h % 3) : h; }
+const calYear = (mi, y) => mi >= 10 ? y + 1 : y;
+const jyl = (W, n) => { const e = eraOf(W); return e.yearLabel ? e.yearLabel(n) : String(n); };
+// An entry about month m of year y is written on the 2nd of the next month.
+function journalDate(W, y, m) { const nm = (m + 1) % 12, ny = m === 11 ? y + 1 : y; return `2nd ${MONTHS[nm]} ${jyl(W, calYear(nm, ny))}`; }
+function monthLabel(W, y, m) { return `${MONTHS[m]} ${jyl(W, calYear(m, y))}`; }
+
+function journalState(W) { W.journal = W.journal || { mode: 'random', writers: [], named: {}, entries: [], turn: 0 }; return W.journal; }
+
+// Who writes this month: a writer you named for it, else by the way you chose (random from the village, random from your list, or your list in turn).
+function pickWriter(W, rng, y, m) {
+  const J = journalState(W), can = q => q && isAlive(q) && q.status === 'resident' && ageOf(q, y) >= 12;
+  const named = W.people[J.named[`${y}-${m}`]]; if (can(named)) return named;
+  const list = J.writers.map(id => W.people[id]).filter(can);
+  if (J.mode === 'listTurn' && list.length) { const q = list[(J.turn || 0) % list.length]; J.turn = (J.turn || 0) + 1; return q; }
+  if (J.mode === 'listRandom' && list.length) return rng.pick(list);
+  const all = lives(W).filter(can); return all.length ? rng.pick(all) : null;
+}
+
+// ---------- writing an entry ----------
+const lcFirst = s => s ? s[0].toLowerCase() + s.slice(1) : s;
+const PUBLIC = new Set(['died', 'arrived', 'married', 'partnered', 'divorced', 'child_born', 'left', 'setback', 'success', 'conflict', 'feud', 'peace', 'injury', 'ill']);
+const SEASON_LINES = [
+  ['The days are drawing out and the mud is drying.', 'Spring at last, and everything green again.', 'Showers one hour, sunshine the next.'],
+  ['Long hot days, and dust on everything.', 'High summer, and the evenings are light till late.', 'A close, heavy month, with thunder about.'],
+  ['The leaves are turning and the mornings are sharp.', 'Mist on the fields most mornings now.', 'Wind and rain; the year is going down.'],
+  ['Bitter cold, and short grey days.', 'Frost on the inside of the window this morning.', 'A long dark month; we keep close to the fire.']
+];
+// How the writer refers to someone: "my wife @12", "my son @40", or just "@12"
+function refTo(W, w, id) {
+  if (id === w.id) return 'me';
+  const q = W.people[id]; if (!q) return 'someone';
+  if (w.spouse === id) return `my ${rel3(q, 'husband', 'wife', 'partner')} @${id}`;
+  if (w.children.includes(id)) return `my ${rel3(q, 'son', 'daughter', 'child')} @${id}`;
+  if (w.father === id || w.mother === id) return `my ${rel3(q, 'father', 'mother', 'parent')}`;
+  if ((q.father && q.father === w.father) || (q.mother && q.mother === w.mother)) return `my ${rel3(q, 'brother', 'sister', 'sibling')} @${id}`;
+  return `@${id}`;
+}
+function firstPerson(W, w, text) {
+  let t = text.replace(/^Badly hurt/, 'Was badly hurt').replace(/@(\d+)/g, (_, id) => refTo(W, w, +id)).replace(/\.$/, '');
+  if (/^[A-Z][a-z]/.test(t) && !/^(The|A|An|My|Their|His|Her|Children|People|Nobody|Everyone)\b/.test(t)) t = 'I ' + lcFirst(t);
+  if (genderOf(w) === 'man') t = t.replace(/\bhis\b/g, 'my').replace(/\bhimself\b/g, 'myself').replace(/\bhe\b/g, 'I');
+  else if (genderOf(w) === 'woman') t = t.replace(/\bherself\b/g, 'myself').replace(/\bshe\b/g, 'I');
+  return t.replace(/\bI was born\b/, 'I came into the world') + '.';
+}
+function aboutOther(W, w, q, text) {
+  let t = text.replace(/^Badly hurt/, 'Was badly hurt').replace(/@(\d+)/g, (_, id) => refTo(W, w, +id)).replace(/\.$/, '');
+  if (/^(Son|Daughter|Child) /.test(t)) t = `${refTo(W, w, q.id)}'s ${lcFirst(t)}`; // "Avice's son Alan was born"
+  else if (!/^@|^my /.test(t) && /^[A-Z]/.test(t)) t = `${refTo(W, w, q.id)} ${lcFirst(t)}`;
+  return t[0].toUpperCase() + t.slice(1) + '.';
+}
+function feeling(W, rng, w, q, e) {
+  const r = relScore(W, w.id, q.id), close = r > 40 || w.spouse === q.id || w.children.includes(q.id) || w.father === q.id || w.mother === q.id, foe = r < -30;
+  if (e.t === 'died') return close ? rng.pick(['I cannot stop weeping.', 'The house feels empty already.', 'I keep turning to tell them something.']) : foe ? rng.pick(['I will not pretend to mourn.', 'I felt nothing, and I am not proud of it.']) : rng.pick(['May they rest in peace.', 'Half the town came to the burial.', '']);
+  if (e.t === 'married' || e.t === 'partnered') return foe ? rng.pick(['I give it a year.', 'Well, they deserve each other.']) : close ? 'I danced till my feet ached.' : rng.pick(['I wish them well.', '']);
+  if (e.t === 'child_born') return close ? 'A fine, loud baby.' : '';
+  if (e.t === 'conflict' || e.t === 'feud') return foe ? 'Serves them right, some would say.' : rng.pick(['A shameful business.', 'People should be kinder.', '']);
+  if (e.t === 'injury' || e.t === 'ill') return close ? 'I have been sitting with them.' : rng.pick(['I hope they mend.', '', '', '']);
+  return '';
+}
+function writeEntry(W, rng, w, y, m) {
+  const era = eraOf(W), m3 = Math.floor(m / 3), pop = lives(W).length, out = [], name = q => `@${q.id}`;
+  const circle = new Set([w.father, w.mother, w.spouse, ...w.children]);
+  const h = W.households[w.household]; if (h) h.members.forEach(id => circle.add(id));
+  for (const r of relsOf(W, w.id)) if (!r.ended && Math.abs(r.score) >= 30) circle.add(r.a === w.id ? r.b : r.a);
+  // what happened this month that they would know of
+  const mine = [], others = [], seen = new Set();
+  for (const q of Object.values(W.people)) {
+    q.events.forEach((e, i) => {
+      if (e.y !== y || monthOf(e, q, i) !== m || e.minor) return;
+      if (q === w) { if (e.t !== 'born' && !e.lw) mine.push(e); return; }
+      if (e.secret || e.t === 'born' || e.t === 'ripple') return; // a birth is told once, from the parents' side
+      const ids = [q.id, ...[...e.text.matchAll(/@(\d+)/g)].map(x => +x[1])].sort((a, b) => a - b);
+      const key = e.t === 'child_born' || /gave birth|became a (father|mother|parent)/.test(e.text) ? 'birth:' + (ids.filter(id => W.people[id] && W.people[id].born === y && id !== q.id)[0] ?? ids.join(',')) : e.t + ':' + ids.join(',');
+      if (seen.has(key)) return; seen.add(key);
+      if (!circle.has(q.id) && e.t === 'ill' && !/nearly died/.test(e.text)) return; // other people's colds are not news
+      if (circle.has(q.id) ? e.t !== 'ripple' : PUBLIC.has(e.t) && (pop < 400 || relScore(W, w.id, q.id) !== 0)) others.push([q, e]);
+    });
+  }
+  const rank = e => { const i = ['died', 'married', 'child_born', 'arrived', 'divorced', 'left', 'injury', 'ill', 'conflict', 'feud', 'success', 'setback', 'work'].indexOf(e.t); return i < 0 ? 99 : i; };
+  others.sort((a, b) => (circle.has(b[0].id) - circle.has(a[0].id)) || rank(a[1]) - rank(b[1]));
+  // opening: the season, the town's news, their spirits
+  const mind = mindOf(w), spirits = (mind.mood || 0) + (mind.joy || 0) - (mind.stress || 0) / 2 - (mind.yearStress || 0) / 3;
+  out.push(rng.pick(SEASON_LINES[m3]) + (spirits < -15 ? rng.pick([' I have been low in spirits.', ' My heart has been heavy.', '']) : spirits > 25 ? rng.pick([' I have been in good heart.', ' Life has been kind to me lately.', '']) : ''));
+  if (m % 3 === 0) for (const l of (W.log || []).filter(l => l.y === y && (l.s == null || l.s === m3) && /weather|event|outbreak|law|election|econ|disaster/.test(l.t || '')).slice(0, 2)) out.push(`News in ${W.name}: ${lcFirst(String(l.text).replace(/\.$/, ''))}.`);
+  // their own month
+  for (const e of mine.slice(0, 4)) out.push(firstPerson(W, w, e.text) + (e.secret ? ' I have told no one.' : ''));
+  // other people
+  for (const [q, e] of others.slice(0, mine.length ? 4 : 6)) {
+    const f = feeling(W, rng, w, q, e), told = aboutOther(W, w, q, e.text);
+    const pre = circle.has(q.id) ? '' : rng.pick(['', '', 'I hear that ', 'Word is that ', 'They say ']);
+    out.push((pre ? pre + (/^My /.test(told) ? 'my' + told.slice(2) : told) : told) + (f ? ' ' + f : ''));
+  }
+  // a quiet month
+  if (!mine.length && !others.length) {
+    const v = (w.venues || []).map(id => (W.venues || []).find(x => x.id === id)).filter(Boolean)[0];
+    out.push(rng.pick([
+      w.traits.E > 60 && v ? `Most evenings I was at ${v.name}, hearing everyone's news.` : `A quiet month. I kept to myself.`,
+      w.workplace && W.workplaces[w.workplace] ? `Work at ${W.workplaces[w.workplace].name} goes on as ever.` : `Nothing much to tell; the days went by.`,
+      w.traits.N > 65 ? 'Nothing happened, and still I lay awake worrying.' : 'Nothing worth writing down, which is a blessing of its own.']));
+  }
+  // closing thought, coloured by who they are
+  const close = [];
+  if (w.goal && rng.chance(0.3)) close.push(`I still hope one day ${w.goal.replace(/\.$/, '').replace(/\btheir\b/g, 'my').replace(/\bthemselves\b/g, 'myself').replace(/\bthem\b/g, 'me').replace(/\bthey\b/g, 'I')}.`);
+  if (w.att) for (const [k, words] of [['outsiders', 'There are more strangers about than I care for.'], ['faiths', 'Some here do not worship as they ought.']]) if (w.att[k] < -50 && rng.chance(0.15)) close.push(words);
+  if (w.traits.O > 70 && rng.chance(0.2)) close.push('I wonder what the world beyond here is like.');
+  if (close.length) out.push(rng.pick(close));
+  // someone who cannot write has it set down for them
+  let scribe = null;
+  if (!w.literate && !W.settings.familySizeLimit) { const lit = lives(W).filter(q => q.literate && q !== w && ageOf(q, y) >= 14); scribe = lit.find(q => /priest|parson|vicar|clerk|minister|teacher|schoolmaster/i.test(q.occupation || '')) || (lit.length ? rng.pick(lit) : null); }
+  return { y, m, w: w.id, date: journalDate(W, y, m), paras: out.filter(Boolean), scribe: scribe ? scribe.id : null, age: ageOf(w, y) };
+}
+// Each year, after its seasons: one entry for each month, from a different writer where possible.
+function journalYear(W, y) {
+  const J = journalState(W), rng = new Rng((W.seed * 6151 + y * 389 + 17) >>> 0), used = new Set();
+  for (let m = 0; m < 12; m++) {
+    let w = pickWriter(W, rng, y, m);
+    if (w && used.has(w.id) && J.mode === 'random' && !J.named[`${y}-${m}`]) { for (let k = 0; k < 5 && w && used.has(w.id); k++) w = pickWriter(W, rng, y, m); }
+    if (!w) continue;
+    used.add(w.id);
+    J.entries.push(writeEntry(W, rng, w, y, m));
+  }
+}
+if (typeof module !== 'undefined') Object.assign(module.exports, { MONTHS, journalYear, journalState, writeEntry, pickWriter, journalDate, monthOf });
 
 // ================= Town Chronicle — page code =================
 let W = null;            // the current community
@@ -7060,7 +7356,7 @@ function renderNav() {
   const map = { person: 'people', household: 'households', group: 'groups', workplace: 'work' };
   const on = map[cur] || cur;
   $('#nav').innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === on ? 'on' : ''}">${l}</button>`).join('') +
-    `<div class="sep"></div><div class="note">V10: four new history periods, attitudes, coming out, lasting injuries and photos.</div>`;
+    `<div class="sep"></div><div class="note">V11: choose every detail of your characters, give anyone any role, and read the village journal.</div>`;
   $('#nav').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (b.dataset.nav === 'people') { ui.peopleFilter = {}; ui.peoplePage = 0; } if (b.dataset.nav === 'households') ui.hhMeans = null; nav.stack = []; nav.cur = null; go(b.dataset.nav); });
 }
 function render() {
@@ -7073,7 +7369,7 @@ function render() {
   const crumbs = nav.stack.length ? `<div class="crumbs"><button class="small" id="bBack">← Back</button></div>` : '';
   let html = '';
   try {
-    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings, maker: viewMaker, attitudes: viewAttitudes, photos: viewPhotos })[v](p);
+    html = ({ exports: viewExports, story: viewStory, trees: viewTrees, census: viewCensus, leaders: viewLeaders, crime: viewCrime, secrets: viewSecrets, economy: viewEconomy, history: viewHistory, backups: viewBackups, overview: viewOverview, people: viewPeople, person: viewPerson, households: viewHouseholds, household: viewHousehold, groups: viewGroups, group: viewGroup, grudges: viewGrudges, work: viewWork, workplace: viewWorkplace, settings: viewSettings, maker: viewMaker, attitudes: viewAttitudes, photos: viewPhotos, roles: viewRoles, journal: viewJournal })[v](p);
   } catch (err) { console.error(err); html = `<div class="card err">Something went wrong showing this page: ${esc(err.message)}</div>`; }
   $('#main').innerHTML = crumbs + html;
   if ($('#bBack')) $('#bBack').onclick = back;
@@ -7097,6 +7393,7 @@ function renderCreate() {
       <h3 style="margin-top:1.2rem">2. The basics</h3>
       <div class="formrow">
         <label>Name of the ${esc(era.townWord)}<span><input type="text" id="cName" value="${esc(createState.name || era.placeNames[0])}" size="22"> <button class="small" id="cNameDice" title="Suggest a name">Suggest</button></span></label>
+        <label>Start with<select id="cMine"><option value="">a village of people (and add your own later)</option><option value="1" ${createState.onlyMine ? 'selected' : ''}>only my characters (an empty village)</option></select></label>
         <label>Number of people (20–1000)<span><input type="number" id="cPop" min="20" max="1000" value="${createState.pop || 500}" style="width:90px"> <input type="range" id="cPopR" min="20" max="1000" value="${createState.pop || 500}"></span></label>
         <label>Random seed (same seed = same town)<span><input type="number" id="cSeed" value="${createState.seed || Math.floor(Math.random() * 1e6)}" style="width:110px"> <button class="small" id="cSeedDice">New</button></span></label>
       </div>
@@ -7114,7 +7411,7 @@ function renderCreate() {
     </div>
     <div class="card"><h3>Or open a saved community</h3><p class="muted small">Open a <code>.town.json</code> or compressed <code>.town.json.gz</code> file you saved earlier.</p><button id="cOpen">Open a file…</button></div>
   </div>`;
-  const keep = () => { createState.name = $('#cName').value; createState.pop = +$('#cPop').value; createState.seed = +$('#cSeed').value; if ($('#cGather')) createState.gathering = $('#cGather').value; if ($('#cPerfect')) createState.perfect = $('#cPerfect').checked; readSettings(); };
+  const keep = () => { createState.onlyMine = !!($('#cMine') && $('#cMine').value); createState.name = $('#cName').value; createState.pop = +$('#cPop').value; createState.seed = +$('#cSeed').value; if ($('#cGather')) createState.gathering = $('#cGather').value; if ($('#cPerfect')) createState.perfect = $('#cPerfect').checked; readSettings(); };
   document.querySelectorAll('[data-era]').forEach(c => c.onclick = () => { keep(); const old = ERAS[createState.era]; createState.era = c.dataset.era; if (!createState.name || old.placeNames.includes(createState.name)) createState.name = ERAS[createState.era].placeNames[0]; renderCreate(); });
   $('#cNameDice').onclick = () => { const n = era.placeNames; $('#cName').value = n[(n.indexOf($('#cName').value) + 1) % n.length]; };
   $('#cSeedDice').onclick = () => { $('#cSeed').value = Math.floor(Math.random() * 1e6); };
@@ -7132,9 +7429,10 @@ function renderCreate() {
         const opts = { era: era.key, population: pop, seed: +$('#cSeed').value || 1, name, settings: createState.settings, options: {} };
         if (drop) { opts.options.gathering = createState.gathering || drop.gathering.default; opts.options.perfectFirstYear = createState.perfect !== false; }
         W = createCommunity(opts); upgradeWorld(W); undoStack.length = 0;
+        if (createState.onlyMine) emptyVillage(W); // V11: a village of only your own characters
         dirty = true; fileHandle = null; nav.stack = []; nav.cur = null;
-        render();
-        toast(`${name} is ready — ${pop} people. Remember to save.`);
+        if (createState.onlyMine) { nav.cur = { view: 'maker', params: {} }; render(); toast(`${name} is ready and empty. Make your characters and use “Move in now”, then give them roles on the Roles page.`, 7000); }
+        else { render(); toast(`${name} is ready — ${pop} people. Remember to save.`); }
       } catch (err) { console.error(err); alert('Sorry, creating the community failed: ' + err.message); }
       done();
     }, 40);
@@ -9233,7 +9531,7 @@ function makerMoveCard(P) {
     ${coming.length ? `<p style="margin:.3rem 0 0"><b>Coming with them</b></p><ul style="margin:.2rem 0 .5rem">${coming.map(who).join('')}</ul>` : '<p class="small">They come alone (no living partner or children in their Family & friends list).</p>'}
     ${death}
     ${move.length ? `<div class="mk-warn" style="padding:.4rem .7rem;border-radius:8px;margin:.4rem 0"><b>Before they can come:</b><ul style="margin:.2rem 0 0">${move.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-    <div class="formrow"><label>Season they arrive${seasonSel('mkSeason')}</label><button class="primary" id="mkPlan" ${fitProblems.length || move.length ? 'disabled' : ''}>Plan their arrival in ${esc(yl(y))}</button></div></div>`;
+    <div class="formrow"><label>Season they arrive${seasonSel('mkSeason')}</label><button class="primary" id="mkPlan" ${fitProblems.length || move.length ? 'disabled' : ''}>Plan their arrival in ${esc(yl(y))}</button> <button id="mkNow" ${fitProblems.length || move.length ? 'disabled' : ''} title="They arrive straight away, without waiting for the next year">Move in now</button></div></div>`;
 }
 function makerIsEmpty(P) { return LW.FIELDS.every(d => !P.f[d.key].v) && LW.LISTNAMES.every(n => !P.lists[n].length); }
 function makerLockBtn(path, on) {
@@ -9245,6 +9543,17 @@ function makerField(P, d) {
   if (d.type === 'area') inp = `<textarea data-mpath="${path}" rows="2">${esc(st.v)}</textarea>`;
   else if (d.type === 'select') inp = `<select data-mpath="${path}"><option value=""></option>${d.options.map(o => `<option ${o === st.v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   else inp = `<input type="text" data-mpath="${path}" value="${esc(st.v)}" ${d.num ? 'inputmode="numeric"' : ''}>`;
+  // V11: a drop-down (with "Other…" to type your own), or tick boxes for details with several answers
+  const opts = d.type === 'select' ? null : makerOptions(W, P, d.key);
+  if (opts && MAKER_MULTI.includes(d.key)) {
+    const cur = String(st.v || '').split(/\s*,\s*/).filter(Boolean), lc = cur.map(x => x.toLowerCase()), others = cur.filter(x => !opts.some(o => o.toLowerCase() === x.toLowerCase()));
+    inp = `<div class="mk-ticks" data-mticks="${path}">${opts.map(o => `<label><input type="checkbox" data-mchk="${path}" value="${esc(o)}" ${lc.includes(o.toLowerCase()) ? 'checked' : ''}> ${esc(o)}</label>`).join('')}
+      <input type="text" data-mother="${path}" placeholder="Other (separate with commas)" value="${esc(others.join(', '))}"></div>`;
+  } else if (opts) {
+    const v = String(st.v || ''), inList = !v || opts.includes(v), other = !inList || (ui.maker && ui.maker.other && ui.maker.other[path]);
+    inp = `<div class="mk-pick"><select data-msel="${path}"><option value="">${st.l ? '(blank)' : '— make one up —'}</option>${opts.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}<option value="__other" ${other ? 'selected' : ''}>Other… (type your own)</option></select>
+      ${other ? `<input type="text" data-mpath="${path}" value="${esc(v)}" placeholder="Type your own">` : ''}</div>`;
+  }
   const hint = d.key === 'deathYear' ? 'Blank lets the town decide. Lock a year to fix it: nothing in the town can kill them before then.' : d.hint;
   return `<div class="mk-field ${st.l ? 'locked' : ''}" data-mwrap="${path}"><label>${esc(d.label)}</label><div class="mk-fi">${inp}${makerLockBtn(path, st.l)}</div>${hint ? `<small class="muted">${esc(hint)}</small>` : ''}</div>`;
 }
@@ -9264,6 +9573,15 @@ function makerSummary(P) {
   const b = v('birthYear') === '' ? null : +v('birthYear');
   return `<h2 style="margin:0">${esc(name)}</h2><p class="muted" style="margin:.2rem 0 0">${b != null && Number.isFinite(b) ? `Born ${esc(yl(b))} · ${y - b} when they arrive in ${esc(yl(y))}` : `Would arrive in ${esc(yl(y))}`}</p>`;
 }
+// Town Chronicle's own details (V11): blank means the town decides
+function makerTcHTML(P) {
+  const t = P.tc || {}, F = makerTcFields(W);
+  const groups = [['town', 'Faith and background'], ['inside', 'Who they are inside'], ['scores', 'Personality scores'], ['talents', 'Natural talents'], ['health', 'Health']];
+  return `<div class="card"><h3>In the town</h3><p class="muted small">Town Chronicle's own details. Leave any blank and the town decides when they move in. Personality scores set here replace the nudges from personality words.</p>
+    ${groups.map(([g, title]) => `<h4 class="small" style="margin:.7rem 0 .3rem">${title}</h4><div class="mk-grid">${F.filter(f => f.g === g).map(f => f.multi
+      ? `<div class="mk-field" style="grid-column:1/-1"><label>${esc(f.label)}</label><div class="mk-ticks">${f.options.map(([v, l]) => `<label><input type="checkbox" data-mtcchk="${f.key}" value="${esc(v)}" ${(t[f.key] || []).includes(v) ? 'checked' : ''}> ${esc(l)}</label>`).join('')}</div></div>`
+      : `<div class="mk-field"><label>${esc(f.label)}</label><select data-mtc="${f.key}"><option value="">— the town decides —</option>${f.options.map(([v, l]) => `<option value="${esc(v)}" ${String(t[f.key] ?? '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${f.hint ? `<small class="muted">${esc(f.hint)}</small>` : ''}</div>`).join('')}</div>`).join('')}</div>`;
+}
 function makerPanel(s) {
   const P = s.P;
   if (s.tab === 'person') {
@@ -9271,7 +9589,7 @@ function makerPanel(s) {
       <li>Fill in anything you already know: a name, a job, a turning point, a marriage year. Whatever you type is locked 🔒.</li>
       <li>Click <b>✨ Generate</b>. Everything else is made up to fit around what you locked, and to fit ${esc(W.name)} in ${esc(yl(makerYear(W)))}.</li>
       <li>Change anything afterwards, lock what you like, and generate again for new ideas.</li></ol></div>` : '';
-    return h + makerGroup(P, 'basics', 'Basics', 'Name, dates and places.') + makerGroup(P, 'looks', 'Looks', 'How they look.') + makerGroup(P, 'personality', 'Personality', 'Who they are inside: traits, hopes and dreams. Separate several items with commas.');
+    return h + makerGroup(P, 'basics', 'Basics', 'Name, dates and places.') + makerGroup(P, 'looks', 'Looks', 'How they look.') + makerGroup(P, 'personality', 'Personality', 'Who they are inside: traits, hopes and dreams. Tick as many as you like.') + makerTcHTML(P);
   }
   if (s.tab === 'family') return makerList(P, 'family');
   if (s.tab === 'record') return makerList(P, 'edu') + makerList(P, 'work') + makerList(P, 'social');
@@ -9340,6 +9658,20 @@ afterRender.maker = () => {
   };
   main.onchange = e => {
     if (!nav.cur || nav.cur.view !== 'maker') return;
+    const ds = e.target.dataset || {};
+    const lockIt = path => { if (s.autoLock && !lockState(wrapOf(path))) setLock(wrapOf(path), true); };
+    if (ds.msel) { // a drop-down: a choice, "make one up" (blank), or "Other…"
+      s.other = s.other || {};
+      if (e.target.value === '__other') { s.other[ds.msel] = true; refreshPanel(); const t = main.querySelector(`input[data-mpath="${ds.msel}"]`); if (t) t.focus(); return; }
+      s.other[ds.msel] = false; setPath(ds.msel, e.target.value); if (e.target.value) lockIt(ds.msel); makerDirty(); refreshPanel(); return;
+    }
+    if (ds.mchk || ds.mother) { // tick boxes and the "other" box beside them
+      const path = ds.mchk || ds.mother, box = main.querySelector(`[data-mticks="${path}"]`);
+      const ticked = [...box.querySelectorAll('input[type=checkbox]:checked')].map(x => x.value), more = box.querySelector('[data-mother]').value.split(',').map(x => x.trim()).filter(Boolean);
+      setPath(path, [...ticked, ...more].join(', ')); lockIt(path); makerDirty(); refreshTop(); return;
+    }
+    if (ds.mtc) { P().tc = P().tc || {}; if (e.target.value === '') delete P().tc[ds.mtc]; else P().tc[ds.mtc] = e.target.value; makerDirty(); refreshTop(); return; }
+    if (ds.mtcchk) { P().tc = P().tc || {}; P().tc[ds.mtcchk] = [...main.querySelectorAll(`[data-mtcchk="${ds.mtcchk}"]:checked`)].map(x => x.value); makerDirty(); refreshTop(); return; }
     if (e.target.dataset && e.target.dataset.msex != null) { P().tcSexes = P().tcSexes || {}; P().tcSexes[e.target.dataset.msex] = e.target.value; makerDirty(); refreshTop(); return; }
     if (e.target.dataset && e.target.dataset.mpath) refreshTop();
   };
@@ -9358,6 +9690,11 @@ afterRender.maker = () => {
       const err = addPlan(W, pl); if (err) { toast('Not planned: ' + err, 5000); return; }
       W.makerDraft = makerBlank(W); s.tab = 'person'; dirty = true; render();
       toast(`${makerPersonName(pl.person)} will arrive in ${SEASONS[pl.s].toLowerCase()} ${yl(W.year)}. You can cancel it on the Storyteller page.`, 5000); return;
+    }
+    if (t.id === 'mkNow') {
+      const nm = makerPersonName(P()); snapshotForEdits();
+      const err = makerMoveInNow(W, P(), P().tcSexes || {}, +$('#mkSeason').value); if (err) { toast('Could not move in: ' + err, 5000); return; }
+      W.makerDraft = makerBlank(W); s.tab = 'person'; dirty = true; render(); toast(`${nm} has moved in. Make another, or give roles on the Roles page.`, 5000); return;
     }
     if (t.id === 'mkGen') { makerGenerate(W, P()); makerDirty(); render(); toast('Done. Anything locked was kept.'); return; }
     if (t.id === 'mkRestory' || t.id === 'mkRestory2') { restory(); return; }
@@ -9574,6 +9911,104 @@ printLife = function (p, o) {
   const h = v10PrintLife(p, o); const ph = p.photo && W.photos && W.photos[p.photo]; if (!ph) return h;
   const at = h.indexOf('</h2>'); return at < 0 ? h : h.slice(0, at + 5) + `<img class="pphoto" src="${ph.data}" alt="">` + h.slice(at + 5);
 };
+
+// ================= V11 page code: Roles, and the village journal =================
+NAV.splice(NAV.findIndex(x => x[0] === 'people') + 1, 0, ['roles', 'Roles']);
+NAV.splice(NAV.findIndex(x => x[0] === 'story') + 1, 0, ['journal', 'Journal']);
+
+// ---------- the Roles page: every job in the town, who does it, and a way to give anyone any role ----------
+function viewRoles() {
+  const roles = allRoles(W), people = lives(W), y = W.year;
+  const slots = W.era === 'dropped' ? null : jobSlots(W, people.filter(q => q.occId).length);
+  const without = people.filter(p => !p.occId && ageOf(p, y) >= 14).sort((a, b) => a.first.localeCompare(b.first));
+  const rows = roles.map(o => {
+    const hold = roleHolders(W, o), want = slots ? Math.round(slots.want[o.id] || 0) : null, off = officeFor(W, o);
+    return `<tr><td><b>${esc(o.name)}</b>${off ? ' <span class="pill acc">office</span>' : ''}${o.apprentice ? ' <span class="pill">apprentice</span>' : ''}<div class="muted small">${esc(o.skill || '')}${o.min ? ` · from age ${o.min}` : ''}${o.sex && o.sex !== 'any' ? ` · usually ${o.sex === 'm' ? 'men' : 'women'}` : ''}</div></td>
+      <td class="num">${hold.length}${want != null ? `<div class="muted small">about ${want} place${want === 1 ? '' : 's'}</div>` : ''}</td>
+      <td>${hold.map(p => `<span class="chip">${plink(p.id)} <button class="small" data-unrole="${p.id}" title="Take ${esc(p.first)} off this work">✕</button></span>`).join(' ') || '<span class="muted small">nobody</span>'}</td>
+      <td><button class="small" data-roleadd="${esc(o.id)}">+ Give someone this role</button></td></tr>`;
+  }).join('');
+  return `<h1>Roles</h1>
+    <p class="muted">Every kind of work in ${esc(W.name)}, who does it now, and roughly how many the town needs. Give anyone any role: if they wouldn't usually fit (too young, the setting's rules on men's and women's work, an injury), you'll be warned first. The town still changes jobs as years go by (deaths, retirement, new openings), and you can change anyone's role at any time.</p>
+    <div class="card" id="roleForm"><h3>Give someone a role</h3><div class="formrow">
+      <label>Person<input type="text" id="roleWho" list="dlPeople" placeholder="Type a name…" size="30"></label>
+      <label>Role<select id="roleWhat">${roles.map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></label>
+      <button class="primary" id="roleGo">Give the role</button></div><div id="roleWarn" class="small"></div>${peopleDatalist()}</div>
+    <div class="card"><h3>Every role</h3><div class="mk-wrap"><table class="list"><thead><tr><th>Role</th><th class="num">People</th><th>Who</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    <div class="card"><h3>Grown-ups without a role (${without.length})</h3>${without.length ? without.map(p => `<span class="chip">${plink(p.id)} <span class="muted small">${ageOf(p, y)}, ${esc(p.occupation || '')}</span></span>`).join(' ') : '<p class="muted small">Everyone has work.</p>'}</div>`;
+}
+afterRender.roles = () => {
+  const warn = () => { const p = W.people[idFromPick($('#roleWho').value)], o = allRoles(W).find(x => x.id === $('#roleWhat').value); $('#roleWarn').innerHTML = p && o ? roleWarnings(W, p, o).map(w => `<div class="mk-warn" style="padding:.2rem .5rem;border-radius:6px;margin-top:.3rem">⚠ ${esc(w)}</div>`).join('') : ''; };
+  $('#roleWho').oninput = warn; $('#roleWhat').onchange = warn;
+  $('#roleGo').onclick = () => {
+    const p = W.people[idFromPick($('#roleWho').value)], o = allRoles(W).find(x => x.id === $('#roleWhat').value);
+    if (!p) { toast('Pick someone from the list.'); return; }
+    const ws = roleWarnings(W, p, o);
+    if (ws.length && !confirm(`${ws.join('\n')}\n\nGive ${p.first} the role of ${o.name.toLowerCase()} anyway?`)) return;
+    snapshotForEdits(); afterEdit(assignRole(W, p, o), `${p.first} is now ${/^[aeiou]/i.test(o.name) ? 'an' : 'a'} ${o.name.toLowerCase()}.`);
+  };
+  document.querySelectorAll('[data-roleadd]').forEach(b => b.onclick = () => { $('#roleWhat').value = b.dataset.roleadd; $('#roleForm').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#roleWho').focus(); warn(); });
+  document.querySelectorAll('[data-unrole]').forEach(b => b.onclick = () => { const p = W.people[+b.dataset.unrole]; if (!confirm(`Take ${p.first} off the work of ${p.occupation.toLowerCase()}?`)) return; snapshotForEdits(); afterEdit(removeRole(W, p), `${p.first} no longer does that work.`); });
+};
+
+// ---------- the village journal ----------
+const JMODES = [['random', 'someone chosen at random from the whole village'], ['listRandom', 'someone chosen at random from my list'], ['listTurn', 'the people on my list, taking turns']];
+function journalEntryHTML(e, forPrint) {
+  const w = W.people[e.w];
+  const by = w ? (forPrint ? esc(fullName(w)) : plink(w.id)) : 'someone';
+  const sc = e.scribe && W.people[e.scribe] ? `, written down by ${forPrint ? esc(fullName(W.people[e.scribe])) : plink(e.scribe)} as ${w ? esc(w.first) : 'they'} told it` : '';
+  const body = forPrint ? esc(plainText(W, e.paras.join(' '))) : linkify(e.paras.join(' '));
+  return `<article class="jentry"><h3>${esc(e.date)}</h3><div class="muted small">${by}, ${e.age} · about ${esc(MONTHS[e.m])}${sc}</div><p>${body}</p></article>`;
+}
+function journalFiltered() {
+  const J = journalState(W), f = ui.jWriter ? +ui.jWriter : null;
+  const years = [...new Set(J.entries.map(e => e.y))].sort((a, b) => b - a);
+  const yr = ui.jYear === 'all' ? null : (ui.jYear != null && years.includes(+ui.jYear) ? +ui.jYear : years[0]);
+  return { J, years, yr, list: J.entries.filter(e => (!f || e.w === f) && (yr == null || e.y === yr)).slice().reverse() };
+}
+function viewJournal() {
+  const { J, years, yr, list } = journalFiltered(), y = W.year;
+  const writersEver = [...new Set(J.entries.map(e => e.w))].map(id => W.people[id]).filter(Boolean).sort((a, b) => a.first.localeCompare(b.first));
+  const named = Object.entries(J.named).filter(([k]) => +k.split('-')[0] >= y).map(([k, id]) => [k, W.people[id]]).filter(([, q]) => q);
+  return `<h1>Journal</h1>
+    <p class="muted">Each month a villager writes about what happened, in their own words: what they saw, heard and felt, coloured by who they are. Entries are written when you advance a year, one for each month, dated the 2nd of the month after. Someone who can't write has it written down for them.</p>
+    <div class="card"><h3>Who writes</h3>
+      <div class="formrow"><label>Each month's writer is<select id="jMode">${JMODES.map(([k, l]) => `<option value="${k}" ${J.mode === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+      <p class="small"><b>My list:</b> ${J.writers.map(id => W.people[id] ? `<span class="chip">${plink(id)} <button class="small" data-jdel="${id}" title="Take off my list">✕</button></span>` : '').join(' ') || '<span class="muted">nobody yet</span>'}</p>
+      <div class="formrow"><label>Add to my list<input type="text" id="jAdd" list="dlPeople" placeholder="Type a name…" size="28"></label><button id="jAddBtn">Add</button></div>
+      <div class="formrow"><label>Name a writer for one month<select id="jMonth">${MONTHS.map((mn, m) => `<option value="${m}">${mn} ${esc(yl(calYear(m, y)))}</option>`).join('')}</select></label><label>Writer<input type="text" id="jNamedWho" list="dlPeople" placeholder="Type a name…" size="24"></label><button id="jNameBtn">Name them</button></div>
+      ${named.length ? `<p class="small"><b>Named for the coming year:</b> ${named.map(([k, q]) => `<span class="chip">${esc(MONTHS[+k.split('-')[1]])}: ${plink(q.id)} <button class="small" data-jnamedel="${k}">✕</button></span>`).join(' ')}</p>` : ''}
+      ${peopleDatalist()}</div>
+    <div class="card"><div class="formrow" style="justify-content:space-between">
+      <span><label>Year<select id="jYear"><option value="all" ${ui.jYear === 'all' ? 'selected' : ''}>all years</option>${years.map(v => `<option value="${v}" ${v === yr ? 'selected' : ''}>${esc(yl(v))}</option>`).join('')}</select></label>
+      <label>Writer<select id="jWriter"><option value="">everyone</option>${writersEver.map(q => `<option value="${q.id}" ${+ui.jWriter === q.id ? 'selected' : ''}>${esc(fullName(q))}</option>`).join('')}</select></label></span>
+      <span><button id="jPrint">🖨 Print / PDF</button> <button id="jTxt">Save as text</button> <button id="jDoc">Save for Word</button></span></div>
+      ${list.length ? list.map(e => journalEntryHTML(e)).join('') : `<p class="muted">No entries yet${J.entries.length ? ' for this choice' : ''}. Advance a year and the first twelve will be written.</p>`}</div>`;
+}
+function journalDoc(list) { return `<h1>The journal of ${esc(W.name)}</h1>${list.map(e => journalEntryHTML(e, true)).join('')}`; }
+afterRender.journal = () => {
+  const J = journalState(W), pick = el => W.people[idFromPick($(el).value)];
+  $('#jMode').onchange = e => { snapshotForEdits(); J.mode = e.target.value; logEdit(W, 'Changed who writes the journal.'); afterEdit(null, 'Changed.'); };
+  $('#jAddBtn').onclick = () => { const q = pick('#jAdd'); if (!q) { toast('Pick someone from the list.'); return; } if (J.writers.includes(q.id)) { toast('Already on the list.'); return; } snapshotForEdits(); J.writers.push(q.id); if (J.mode === 'random') J.mode = 'listRandom'; afterEdit(null, `${q.first} is on your list of writers.`); };
+  document.querySelectorAll('[data-jdel]').forEach(b => b.onclick = () => { snapshotForEdits(); J.writers = J.writers.filter(id => id !== +b.dataset.jdel); afterEdit(null, 'Taken off the list.'); });
+  $('#jNameBtn').onclick = () => { const q = pick('#jNamedWho'); if (!q) { toast('Pick someone from the list.'); return; } snapshotForEdits(); J.named[`${W.year}-${$('#jMonth').value}`] = q.id; afterEdit(null, `${q.first} will write about ${MONTHS[+$('#jMonth').value]}.`); };
+  document.querySelectorAll('[data-jnamedel]').forEach(b => b.onclick = () => { snapshotForEdits(); delete J.named[b.dataset.jnamedel]; afterEdit(null, 'Removed.'); });
+  $('#jYear').onchange = e => { ui.jYear = e.target.value; render(); };
+  $('#jWriter').onchange = e => { ui.jWriter = e.target.value; render(); };
+  const { list } = journalFiltered(), inOrder = list.slice().reverse();
+  $('#jPrint').onclick = () => printHTML(`Journal of ${W.name}`, journalDoc(inOrder));
+  $('#jTxt').onclick = () => downloadBlob(new Blob([`The journal of ${W.name}\n\n` + inOrder.map(e => `${e.date}\n${W.people[e.w] ? fullName(W.people[e.w]) : ''}, ${e.age}${e.scribe && W.people[e.scribe] ? ` (written down by ${fullName(W.people[e.scribe])})` : ''}\n${plainText(W, e.paras.join(' '))}\n`).join('\n')], { type: 'text/plain' }), `${W.name} journal.txt`);
+  $('#jDoc').onclick = () => downloadBlob(new Blob([`<html><head><meta charset="utf-8"><title>Journal of ${esc(W.name)}</title></head><body style="font-family:Georgia,serif">${journalDoc(inOrder)}</body></html>`], { type: 'application/msword' }), `${W.name} journal.doc`);
+};
+// a writer's own entries, on their page
+function journalByHTML(p) {
+  const J = W.journal; if (!J) return ''; const mine = J.entries.filter(e => e.w === p.id);
+  if (!mine.length) return '';
+  return `<div class="card"><h3>${esc(p.first)}'s journal entries (${mine.length})</h3>${mine.slice(-3).reverse().map(e => journalEntryHTML(e)).join('')}${mine.length > 3 ? `<button class="small" data-jwriter="${p.id}">See all ${mine.length} on the Journal page</button>` : ''}</div>`;
+}
+const v11PersonStory = personStory;
+personStory = function (p, y) { return v11PersonStory(p, y) + journalByHTML(p); };
+document.addEventListener('click', e => { const b = e.target.closest('[data-jwriter]'); if (!b) return; ui.jWriter = b.dataset.jwriter; ui.jYear = 'all'; go('journal'); });
 
 </script>
 </body>

@@ -931,7 +931,7 @@ let townFit = null;
 const lifeweaverSettingData = settingData;
 settingData = function (setting, era) { const d = lifeweaverSettingData(setting, era); return townFit ? townFit(d) : d; };
 return {
-  generate, buildStory, buildTimeline, checkPerson, blankPerson, settingData, ERAS, PACKS, FIELDS, LISTNAMES, LISTS, REL_OPTIONS,
+  generate, buildStory, buildTimeline, checkPerson, blankPerson, settingData, ERAS, PACKS, FIELDS, LISTNAMES, LISTS, REL_OPTIONS, COMMON,
   setRandom: f => { rnd = f || Math.random; },
   setTownFit: f => { townFit = f || null; }
 };
@@ -1038,8 +1038,8 @@ function makerMoveProblems(W, P, chosen) {
   if (!makerAvailable(W)) return ['Making a person isn’t ready yet for this setting.'];
   const out = makerProblems(W, P).slice();
   const g = P.f.gender.v;
-  if (g === 'Non-binary') out.push('Town Chronicle can’t have non-binary people yet (that comes in a later step). Choose Man or Woman to move them in now.');
-  else if (g !== 'Man' && g !== 'Woman') out.push('Choose whether they are a man or a woman.');
+  if (g === 'Non-binary') { if (!(P.tc && P.tc.sex)) out.push('Choose their body (male or female, for pregnancy and births) under “In the town”.'); }
+  else if (g !== 'Man' && g !== 'Woman') out.push('Choose whether they are a man, a woman or non-binary.');
   if (!String(P.f.firstName.v || '').trim()) out.push('They need a first name.');
   const { partner, kids } = makerParty(W, P), y = makerYear(W);
   for (const r of [partner, ...kids].filter(Boolean)) {
@@ -1082,7 +1082,7 @@ function makerMoveIn(W, rng, y, s, R, pl) {
   const pr = makerMoveProblems(W, P, pl.sexes); if (pr.length) return `${makerPersonName(P)} could not come: ${pr[0]}`;
   const v = k => String(P.f[k].v || '').trim();
   const culture = rng.weighted(era.cultures);
-  const sex = v('gender') === 'Man' ? 'm' : 'f';
+  const sex = (P.tc && P.tc.sex) || (v('gender') === 'Man' ? 'm' : 'f');
   const main = makePerson(W, rng, { born: +v('birthYear'), sex, culture, arrived: y, first: v('firstName'), last: v('lastName') || undefined });
   const { partner, kids } = makerParty(W, P);
   const split = n => { const w = String(n || '').trim().split(/\s+/); return { first: w[0], last: w.slice(1).join(' ') || main.last }; };
@@ -1115,6 +1115,7 @@ function makerMoveIn(W, rng, y, s, R, pl) {
     turning: P.lists.turning.map(r => ({ year: r.year, what: r.what, change: r.change })), own: P.lists.custom.map(r => ({ year: r.year, what: r.what }))
   };
 
+  makerApplyTc(W, P, main, y); // V11: the Town Chronicle details you chose
   // partner
   let mate = null;
   if (partner) {
@@ -1158,7 +1159,8 @@ function makerMoveIn(W, rng, y, s, R, pl) {
 
   // a home, minds, skills and work, as for other newcomers
   newHousehold(W, rng, home, y);
-  for (const q of home) addEvent(W, q, y, 'arrived', `Came to ${W.name}${q === main ? '' : ' with @' + main.id}.`);
+  makerApplyWealth(W, P, W.households[main.household]);
+  for (const q of home) addEvent(W, q, y, 'arrived', `Came to ${W.name}${q === main ? '' : ' with @' + main.id}.`, s != null ? { m: s * 3 } : null); // the family arrives together, in the first month of the season
   for (const q of home) { mindOf(q); q.skills = {}; for (const k of Object.keys(q.aptitude)) q.skills[k] = Math.round(q.aptitude[k] * 0.35 + Math.min(20, ageOf(q, y) - 10)); q.hist = []; }
   assignNewcomerJobs(W, rng, home, y, R);
   // their own job, if the town has it and there is an opening (agreed)
@@ -1228,3 +1230,76 @@ function makerSheet(W, people) {
   return { name: 'Made people', rows: [['ID', 'Name', ...cols, 'Life story before coming'], ...made.map(p => { const d = Object.fromEntries(makerDetails(W, p)); return [p.id, `${p.first} ${p.last}`, ...cols.map(c => (d[c] || '').replace(/\n/g, '; ')), String(p.made.story || '')]; })] };
 }
 if (typeof module !== 'undefined') Object.assign(module.exports, { makerDetails, makerDetailText, makerSheet });
+
+/* ---------- V11: choices for every detail ---------- */
+// Single choices get a drop-down (plus "Other…"); these get tick boxes because a person can have several.
+const MAKER_MULTI = ['traits', 'likes', 'fears', 'values', 'features'];
+const makerPron = P => P.f.gender.v === 'Man' ? 'his' : P.f.gender.v === 'Woman' ? 'her' : 'their';
+// The options for one of LifeWeaver's details, fitted to the town (names, places and causes come from both apps' lists).
+function makerOptions(W, P, key) {
+  const S = withTown(W, null, () => LW.settingData(P.setting, P.era)), C = LW.COMMON, y = makerYear(W), fill = l => l.map(x => String(x).replace(/\{P\}/g, makerPron(P)).replace(/\{place\}/g, (S.places && S.places[0]) || 'the old kingdom'));
+  const g = P.f.gender.v, uniq = l => [...new Set(l.filter(Boolean))];
+  const range = (a, b, st = 1) => { const o = []; for (let i = a; st > 0 ? i <= b : i >= b; i += st) o.push(String(i)); return o; };
+  switch (key) {
+    case 'firstName': return uniq(g === 'Man' ? S.names.m : g === 'Woman' ? S.names.f : [...S.names.m, ...S.names.f]).sort();
+    case 'lastName': return uniq(S.sur).sort();
+    case 'birthYear': return range(y, y - 95, -1);
+    case 'deathYear': return range(y, y + 80);
+    case 'birthPlace': case 'home': return uniq([W.name, ...(S.places || [])]);
+    case 'deathCause': return uniq([...(S.deaths || []), ...((ERAS[W.era].illnesses) || []), ...((ERAS[W.era].oldCauses) || [])]);
+    case 'height': return range(140, 200, 2).map(c => { const i = Math.round(+c / 2.54); return `${c} cm (${Math.floor(i / 12)}'${i % 12}")`; });
+    case 'build': return fill(C.builds);
+    case 'hair': return uniq(C.hairS.flatMap(st => C.hairC.map(c => (st ? st + ' ' : '') + c)).map(x => x[0].toUpperCase() + x.slice(1)));
+    case 'eyes': return fill(C.eyes);
+    case 'traits': case 'likes': case 'fears': case 'values': return uniq(fill(C[key]));
+    case 'features': return uniq(fill([...(C.features || []), ...(S.features || [])]));
+    case 'quirk': return fill(C.quirks).map(x => x[0].toUpperCase() + x.slice(1));
+    case 'hopes': return uniq(fill([...C.hopes, ...(S.hopes || [])])).map(x => x[0].toUpperCase() + x.slice(1));
+    case 'dreams': return uniq(fill([...C.dreams, ...(S.dreams || [])])).map(x => x[0].toUpperCase() + x.slice(1));
+    case 'regret': return fill(C.regrets).map(x => x[0].toUpperCase() + x.slice(1));
+    default: return null;
+  }
+}
+// Town Chronicle's own details, which LifeWeaver didn't have. Blank means "let the town decide".
+const MK_LEVELS = [['10', 'very low'], ['30', 'low'], ['50', 'average'], ['70', 'high'], ['90', 'very high']];
+const MK_TRAITS = { O: 'Curiosity (openness)', C: 'Carefulness (conscientiousness)', E: 'Outgoingness (extraversion)', A: 'Warmth (agreeableness)', N: 'Worry (nervousness)' };
+const MK_SKILLS = { farming: 'Farming', craft: 'Crafts', trade: 'Trade', learning: 'Learning', healing: 'Healing', fighting: 'Fighting', animals: 'Animals', outdoors: 'Outdoors', arts: 'Arts', leadership: 'Leadership', labor: 'Heavy labour', magic: 'Magic', tech: 'Technology', science: 'Science' };
+function makerTcFields(W) {
+  const era = ERAS[W.era];
+  const skills = Object.keys(MK_SKILLS).filter(k => (era.occupations || []).some(o => o.skill === k) || ['learning', 'arts', 'leadership'].includes(k));
+  const conds = [...new Set([...(era.conditions || []).map(c => c[0]), ...(typeof LASTING !== 'undefined' ? LASTING : []), ...(typeof LASTING_SEVERE !== 'undefined' ? LASTING_SEVERE : [])])];
+  return [
+    { key: 'faith', label: 'Faith', g: 'town', options: Object.keys(era.faiths || {}).map(x => [x, x]) },
+    { key: 'culture', label: 'Background (culture)', g: 'town', options: Object.keys(era.cultures || {}).map(c => [c, (CULTURES[c] && CULTURES[c].label) || c]) },
+    { key: 'wealth', label: 'Household wealth', g: 'town', options: [['6', 'destitute'], ['20', 'poor'], ['36', 'getting by'], ['55', 'comfortable'], ['75', 'well-off'], ['92', 'rich']] },
+    { key: 'literate', label: 'Can read and write', g: 'town', options: [['yes', 'yes'], ['no', 'no']] },
+    { key: 'sex', label: 'Body (for pregnancy and births)', g: 'inside', options: [['m', 'male'], ['f', 'female']], hint: 'Needed for non-binary people. If it differs from Man or Woman above, they are a trans man or woman.' },
+    { key: 'livesAs', label: 'Lives as', g: 'inside', options: [['man', 'a man'], ['woman', 'a woman'], ['nonbinary', 'non-binary']] },
+    { key: 'feels', label: 'Feels, inside', g: 'inside', options: [['man', 'a man'], ['woman', 'a woman'], ['nonbinary', 'non-binary']], hint: 'If this differs from who they live as, they know it but hide it.' },
+    { key: 'orientation', label: 'Drawn to', g: 'inside', options: [['straight', 'the other sex'], ['gay', 'the same sex'], ['bisexual', 'both']] },
+    { key: 'open', label: 'Open about who they love', g: 'inside', options: [['open', 'open'], ['hiding', 'hiding it']] },
+    ...Object.keys(MK_TRAITS).map(k => ({ key: 'trait' + k, label: MK_TRAITS[k], g: 'scores', options: MK_LEVELS })),
+    { key: 'intellect', label: 'Cleverness', g: 'scores', options: MK_LEVELS },
+    ...skills.map(k => ({ key: 'apt_' + k, label: 'Talent: ' + MK_SKILLS[k], g: 'talents', options: MK_LEVELS })),
+    { key: 'health', label: 'Health', g: 'health', options: [['20', 'poor'], ['45', 'fair'], ['70', 'good'], ['92', 'excellent']] },
+    { key: 'conditions', label: 'Conditions and lasting injuries', g: 'health', multi: true, options: conds.map(c => [c, c]) }
+  ];
+}
+// Put the chosen Town Chronicle details onto the new townsperson (called by makerMoveIn).
+function makerApplyTc(W, P, p, y) {
+  const t = P.tc || {}, has = k => t[k] != null && t[k] !== '' && !(Array.isArray(t[k]) && !t[k].length);
+  if (has('faith')) p.faith = t.faith;
+  if (has('culture') && CULTURES[t.culture]) p.culture = t.culture;
+  if (has('literate')) p.literate = t.literate === 'yes';
+  for (const k of Object.keys(MK_TRAITS)) if (has('trait' + k)) p.traits[k] = +t['trait' + k];
+  if (has('intellect')) p.intellect = +t.intellect;
+  for (const k of Object.keys(p.aptitude || {})) if (has('apt_' + k)) p.aptitude[k] = +t['apt_' + k];
+  if (has('health')) p.health = +t.health;
+  if (has('conditions')) p.conditions = [...new Set([...(p.conditions || []), ...t.conditions])];
+  if (has('orientation')) { p.orientation = t.orientation; if (t.orientation === 'straight') delete p.so; else p.so = { realise: p.born + 14, realised: Math.min(y, p.born + 15), out: t.open === 'hiding' ? null : y }; }
+  const raised = p.sex === 'm' ? 'man' : 'woman', lives = has('livesAs') ? t.livesAs : ({ Man: 'man', Woman: 'woman', 'Non-binary': 'nonbinary' })[P.f.gender.v] || raised, feels = has('feels') ? t.feels : lives;
+  if (lives !== raised) { p.inner = { felt: lives, realise: p.born + 10, realised: Math.min(y, p.born + 12), out: y }; p.gender = lives; }       // open about it
+  else if (feels !== raised) p.inner = { felt: feels, realise: p.born + 10, realised: Math.min(y, p.born + 12), out: null };                     // knows, but hides it
+}
+function makerApplyWealth(W, P, home) { const t = P.tc || {}; if (t.wealth != null && t.wealth !== '' && home) home.wealth = +t.wealth; }
+if (typeof module !== 'undefined') Object.assign(module.exports, { makerOptions, makerTcFields, makerApplyTc, MAKER_MULTI });

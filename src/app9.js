@@ -31,7 +31,7 @@ function makerMoveCard(P) {
     ${coming.length ? `<p style="margin:.3rem 0 0"><b>Coming with them</b></p><ul style="margin:.2rem 0 .5rem">${coming.map(who).join('')}</ul>` : '<p class="small">They come alone (no living partner or children in their Family & friends list).</p>'}
     ${death}
     ${move.length ? `<div class="mk-warn" style="padding:.4rem .7rem;border-radius:8px;margin:.4rem 0"><b>Before they can come:</b><ul style="margin:.2rem 0 0">${move.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-    <div class="formrow"><label>Season they arrive${seasonSel('mkSeason')}</label><button class="primary" id="mkPlan" ${fitProblems.length || move.length ? 'disabled' : ''}>Plan their arrival in ${esc(yl(y))}</button></div></div>`;
+    <div class="formrow"><label>Season they arrive${seasonSel('mkSeason')}</label><button class="primary" id="mkPlan" ${fitProblems.length || move.length ? 'disabled' : ''}>Plan their arrival in ${esc(yl(y))}</button> <button id="mkNow" ${fitProblems.length || move.length ? 'disabled' : ''} title="They arrive straight away, without waiting for the next year">Move in now</button></div></div>`;
 }
 function makerIsEmpty(P) { return LW.FIELDS.every(d => !P.f[d.key].v) && LW.LISTNAMES.every(n => !P.lists[n].length); }
 function makerLockBtn(path, on) {
@@ -43,6 +43,17 @@ function makerField(P, d) {
   if (d.type === 'area') inp = `<textarea data-mpath="${path}" rows="2">${esc(st.v)}</textarea>`;
   else if (d.type === 'select') inp = `<select data-mpath="${path}"><option value=""></option>${d.options.map(o => `<option ${o === st.v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   else inp = `<input type="text" data-mpath="${path}" value="${esc(st.v)}" ${d.num ? 'inputmode="numeric"' : ''}>`;
+  // V11: a drop-down (with "Other…" to type your own), or tick boxes for details with several answers
+  const opts = d.type === 'select' ? null : makerOptions(W, P, d.key);
+  if (opts && MAKER_MULTI.includes(d.key)) {
+    const cur = String(st.v || '').split(/\s*,\s*/).filter(Boolean), lc = cur.map(x => x.toLowerCase()), others = cur.filter(x => !opts.some(o => o.toLowerCase() === x.toLowerCase()));
+    inp = `<div class="mk-ticks" data-mticks="${path}">${opts.map(o => `<label><input type="checkbox" data-mchk="${path}" value="${esc(o)}" ${lc.includes(o.toLowerCase()) ? 'checked' : ''}> ${esc(o)}</label>`).join('')}
+      <input type="text" data-mother="${path}" placeholder="Other (separate with commas)" value="${esc(others.join(', '))}"></div>`;
+  } else if (opts) {
+    const v = String(st.v || ''), inList = !v || opts.includes(v), other = !inList || (ui.maker && ui.maker.other && ui.maker.other[path]);
+    inp = `<div class="mk-pick"><select data-msel="${path}"><option value="">${st.l ? '(blank)' : '— make one up —'}</option>${opts.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}<option value="__other" ${other ? 'selected' : ''}>Other… (type your own)</option></select>
+      ${other ? `<input type="text" data-mpath="${path}" value="${esc(v)}" placeholder="Type your own">` : ''}</div>`;
+  }
   const hint = d.key === 'deathYear' ? 'Blank lets the town decide. Lock a year to fix it: nothing in the town can kill them before then.' : d.hint;
   return `<div class="mk-field ${st.l ? 'locked' : ''}" data-mwrap="${path}"><label>${esc(d.label)}</label><div class="mk-fi">${inp}${makerLockBtn(path, st.l)}</div>${hint ? `<small class="muted">${esc(hint)}</small>` : ''}</div>`;
 }
@@ -62,6 +73,15 @@ function makerSummary(P) {
   const b = v('birthYear') === '' ? null : +v('birthYear');
   return `<h2 style="margin:0">${esc(name)}</h2><p class="muted" style="margin:.2rem 0 0">${b != null && Number.isFinite(b) ? `Born ${esc(yl(b))} · ${y - b} when they arrive in ${esc(yl(y))}` : `Would arrive in ${esc(yl(y))}`}</p>`;
 }
+// Town Chronicle's own details (V11): blank means the town decides
+function makerTcHTML(P) {
+  const t = P.tc || {}, F = makerTcFields(W);
+  const groups = [['town', 'Faith and background'], ['inside', 'Who they are inside'], ['scores', 'Personality scores'], ['talents', 'Natural talents'], ['health', 'Health']];
+  return `<div class="card"><h3>In the town</h3><p class="muted small">Town Chronicle's own details. Leave any blank and the town decides when they move in. Personality scores set here replace the nudges from personality words.</p>
+    ${groups.map(([g, title]) => `<h4 class="small" style="margin:.7rem 0 .3rem">${title}</h4><div class="mk-grid">${F.filter(f => f.g === g).map(f => f.multi
+      ? `<div class="mk-field" style="grid-column:1/-1"><label>${esc(f.label)}</label><div class="mk-ticks">${f.options.map(([v, l]) => `<label><input type="checkbox" data-mtcchk="${f.key}" value="${esc(v)}" ${(t[f.key] || []).includes(v) ? 'checked' : ''}> ${esc(l)}</label>`).join('')}</div></div>`
+      : `<div class="mk-field"><label>${esc(f.label)}</label><select data-mtc="${f.key}"><option value="">— the town decides —</option>${f.options.map(([v, l]) => `<option value="${esc(v)}" ${String(t[f.key] ?? '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${f.hint ? `<small class="muted">${esc(f.hint)}</small>` : ''}</div>`).join('')}</div>`).join('')}</div>`;
+}
 function makerPanel(s) {
   const P = s.P;
   if (s.tab === 'person') {
@@ -69,7 +89,7 @@ function makerPanel(s) {
       <li>Fill in anything you already know: a name, a job, a turning point, a marriage year. Whatever you type is locked 🔒.</li>
       <li>Click <b>✨ Generate</b>. Everything else is made up to fit around what you locked, and to fit ${esc(W.name)} in ${esc(yl(makerYear(W)))}.</li>
       <li>Change anything afterwards, lock what you like, and generate again for new ideas.</li></ol></div>` : '';
-    return h + makerGroup(P, 'basics', 'Basics', 'Name, dates and places.') + makerGroup(P, 'looks', 'Looks', 'How they look.') + makerGroup(P, 'personality', 'Personality', 'Who they are inside: traits, hopes and dreams. Separate several items with commas.');
+    return h + makerGroup(P, 'basics', 'Basics', 'Name, dates and places.') + makerGroup(P, 'looks', 'Looks', 'How they look.') + makerGroup(P, 'personality', 'Personality', 'Who they are inside: traits, hopes and dreams. Tick as many as you like.') + makerTcHTML(P);
   }
   if (s.tab === 'family') return makerList(P, 'family');
   if (s.tab === 'record') return makerList(P, 'edu') + makerList(P, 'work') + makerList(P, 'social');
@@ -138,6 +158,20 @@ afterRender.maker = () => {
   };
   main.onchange = e => {
     if (!nav.cur || nav.cur.view !== 'maker') return;
+    const ds = e.target.dataset || {};
+    const lockIt = path => { if (s.autoLock && !lockState(wrapOf(path))) setLock(wrapOf(path), true); };
+    if (ds.msel) { // a drop-down: a choice, "make one up" (blank), or "Other…"
+      s.other = s.other || {};
+      if (e.target.value === '__other') { s.other[ds.msel] = true; refreshPanel(); const t = main.querySelector(`input[data-mpath="${ds.msel}"]`); if (t) t.focus(); return; }
+      s.other[ds.msel] = false; setPath(ds.msel, e.target.value); if (e.target.value) lockIt(ds.msel); makerDirty(); refreshPanel(); return;
+    }
+    if (ds.mchk || ds.mother) { // tick boxes and the "other" box beside them
+      const path = ds.mchk || ds.mother, box = main.querySelector(`[data-mticks="${path}"]`);
+      const ticked = [...box.querySelectorAll('input[type=checkbox]:checked')].map(x => x.value), more = box.querySelector('[data-mother]').value.split(',').map(x => x.trim()).filter(Boolean);
+      setPath(path, [...ticked, ...more].join(', ')); lockIt(path); makerDirty(); refreshTop(); return;
+    }
+    if (ds.mtc) { P().tc = P().tc || {}; if (e.target.value === '') delete P().tc[ds.mtc]; else P().tc[ds.mtc] = e.target.value; makerDirty(); refreshTop(); return; }
+    if (ds.mtcchk) { P().tc = P().tc || {}; P().tc[ds.mtcchk] = [...main.querySelectorAll(`[data-mtcchk="${ds.mtcchk}"]:checked`)].map(x => x.value); makerDirty(); refreshTop(); return; }
     if (e.target.dataset && e.target.dataset.msex != null) { P().tcSexes = P().tcSexes || {}; P().tcSexes[e.target.dataset.msex] = e.target.value; makerDirty(); refreshTop(); return; }
     if (e.target.dataset && e.target.dataset.mpath) refreshTop();
   };
@@ -156,6 +190,11 @@ afterRender.maker = () => {
       const err = addPlan(W, pl); if (err) { toast('Not planned: ' + err, 5000); return; }
       W.makerDraft = makerBlank(W); s.tab = 'person'; dirty = true; render();
       toast(`${makerPersonName(pl.person)} will arrive in ${SEASONS[pl.s].toLowerCase()} ${yl(W.year)}. You can cancel it on the Storyteller page.`, 5000); return;
+    }
+    if (t.id === 'mkNow') {
+      const nm = makerPersonName(P()); snapshotForEdits();
+      const err = makerMoveInNow(W, P(), P().tcSexes || {}, +$('#mkSeason').value); if (err) { toast('Could not move in: ' + err, 5000); return; }
+      W.makerDraft = makerBlank(W); s.tab = 'person'; dirty = true; render(); toast(`${nm} has moved in. Make another, or give roles on the Roles page.`, 5000); return;
     }
     if (t.id === 'mkGen') { makerGenerate(W, P()); makerDirty(); render(); toast('Done. Anything locked was kept.'); return; }
     if (t.id === 'mkRestory' || t.id === 'mkRestory2') { restory(); return; }

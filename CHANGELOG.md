@@ -1,5 +1,77 @@
 # Town Chronicle — Changelog
 
+## V11 — Stage 9: your own characters, roles and the village journal (2026-11-15)
+
+**Make a person: every detail from drop-down menus**
+- **Single details** (first and last name, year born and died, birthplace, home, cause of death, height, build, hair, eyes, habits, hopes, dreams, biggest regret) each have a drop-down. It lists choices that fit the setting (both apps' lists combined), "— make one up —", and **Other…** to type your own.
+- **Details with several answers** (personality words, likes, fears, what matters most, notable features) are tick boxes, with a box for your own.
+- **New "In the town" section**, for the details Town Chronicle itself keeps. Leave any blank and the town decides:
+  - faith, background (culture), household wealth, and whether they can read and write
+  - who they are inside: body (for pregnancy and births), the gender they live as, how they feel inside (if different, they hide it), who they are drawn to, and whether they are open about it
+  - the five personality scores and cleverness, from very low to very high, plus natural talents for each kind of work
+  - health, and conditions and lasting injuries (tick boxes)
+- **Non-binary people** can now be made and moved in. Choose their body for births.
+
+**A village of only your characters, and Move in now**
+- **New village choice:** "Start with: only my characters" creates the buildings, jobs and offices with nobody in them, and opens Make a person.
+  - No strangers arrive by themselves; you can change this in Era settings.
+  - Births, deaths and everything else carry on.
+- **Move in now:** a made person (with their partner and children) can arrive straight away, not only as a plan for the coming year. A family's arrival is recorded in the same month.
+
+**Roles page**
+- **What it shows:** every role in the setting, who does it now, and roughly how many the town needs. There is also a list of grown-ups without a role.
+- **Changing roles:** give anyone any role. If it wouldn't usually fit, you're warned first, and can still go ahead. Reasons include:
+  - too young or too old
+  - the setting's rules on men's and women's work
+  - unmarried work for a married person
+  - reading needed
+  - an injury that rules it out
+- **Offices** (lord, mayor, sheriff…) go through the town's own office rules.
+- **Taking someone off:** take someone off their role at any time.
+- **What happens afterwards:** the town still changes jobs over the years as before. A role you chose is not taken away just because of an injury.
+
+**Months and the village journal**
+- **Months:** the year now has months, March to February. Every event is placed in a month within its season.
+- **The journal:** each year, one entry per month is written by a villager about what happened that month, dated the 2nd of the month after.
+  - It's in their own words: their own news, their family's and friends', and the town's births, deaths, marriages, arrivals, troubles and news.
+  - Their feelings depend on how they get on with each person: grief, gladness, or none at all.
+  - Their mood, personality, hopes and attitudes colour it.
+  - Someone who can't write has it written down for them.
+  - Entries are put together by the app's own writing rules (it works offline, with no AI inside it).
+- **Who writes:** someone at random from the whole village (a different person each month), someone at random from your list, or your list taking turns. You can also name a writer for any month of the coming year.
+- **Where to read it:**
+  - a new **Journal** page, by year and by writer
+  - the last entries on each writer's own page
+  - print or PDF
+  - save as text or for Word
+  - a new **Journal** sheet in Excel exports
+
+**Also fixed**
+- **A crash in tiny villages:** a crime could pick a victim who didn't exist.
+
+**Checked**
+- **All earlier checks** were rerun on all ten settings:
+  - 50 years lived forward, editing and plans, person family trees and whole-family trees: 0 problems
+  - family-tree files and Excel workbooks read back (20,980 people, 4,062,404 cells): 0 differences
+  - person maker (3,000 people), moving in (400 people with families) and V10 inner lives and attitudes: 0 problems
+  - in Chrome: every earlier page check passed, with 0 errors
+- **New V11 check,** in all ten settings:
+  - **Building a village:** empty villages were filled with 140 made characters. 606 chosen details were checked and every one was applied.
+  - **Roles:** everyone was given a random role. 46 got a warning, and every role was given anyway.
+  - **Running it:** each village ran 30 years. The town's records had 0 problems.
+  - **The journal:**
+    - 3,492 entries, with clean text and proper dates
+    - every writer alive, living in the town and at least 12
+    - named writers, turn-taking and list-only writing all as chosen
+    - the Excel Journal sheet matches
+  - **Ordinary villages:** each wrote 12 entries a year with no writer repeated within a year.
+- **In Chrome:**
+  - an empty village was filled using the drop-downs, typed names, tick boxes and chosen details
+  - Move in now, giving roles with and without warnings, offices and removing roles
+  - journal writers, a named month and a year of entries
+  - families arriving in the same month, saving the journal as text and for Word, writer pages and saves
+  - all passed, with 0 errors
+
 ## V10 — Stage 8: four new periods, inner lives, attitudes, lasting injuries and photos (2026-11-09)
 
 **New settings: four history periods** (LifeWeaver's periods, now whole town settings)

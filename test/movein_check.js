@@ -1,7 +1,7 @@
 // Checks moving made people into towns: arrival, family, locked death years, unlocking, and the whole town staying consistent.
 // Usage: node movein_check.js [made people per setting] [years to run after] [seed]
 const fs = require('fs'), vm = require('vm'), path = require('path');
-const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'lives.js', 'census.js', 'edit.js', 'export.js', 'maker.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
+const src = ['cultures.js', 'eras.js', 'engine.js', 'family.js', 'sim.js', 'econ.js', 'society.js', 'lives.js', 'journal.js', 'census.js', 'edit.js', 'export.js', 'maker.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
 const ctx = { module: { exports: {} }, console, Date, Math, JSON, Blob, Response, CompressionStream, DecompressionStream, TextEncoder, TextDecoder, Uint8Array };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const E = ctx.module.exports;
