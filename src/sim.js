@@ -125,6 +125,20 @@ function ripple(W, rng, p, y, kind, mag, text, opts) {
 }
 
 // ---------- world upgrade (older saves and fresh towns) ----------
+// spouse relationships carry the quality of each marriage
+// (V12: also run at the end of every year, so couples who arrive together have theirs at once, not only after the town is reopened)
+function ensureSpouseRels(W) {
+  for (const p of Object.values(W.people)) {
+    if (!p.spouse || p.id > p.spouse || p.died != null) continue;
+    const s = W.people[p.spouse];
+    if (!s || s.died != null) continue;
+    if (!getRel(W, p.id, s.id) || getRel(W, p.id, s.id).type !== 'spouse') {
+      const since = (p.events.filter(e => e.t === 'married' || e.t === 'partnered').pop() || {}).y || W.year;
+      const compat = 100 - (Math.abs(p.traits.A - s.traits.A) + Math.abs(p.traits.O - s.traits.O)) / 2;
+      setRel(W, p.id, s.id, 'spouse', Math.round(clamp(compat * 0.6 + (p.traits.A + s.traits.A) / 8 - (p.traits.N + s.traits.N) / 10 + (rng0(p.id + s.id) % 30) - 5, 5, 95)), since, s.union === 'partners' ? 'partners' : 'married');
+    }
+  }
+}
 function upgradeWorld(W) {
   const era = eraOf(W);
   for (const k of Object.keys(SETTING_INFO)) if (W.settings[k] === undefined) W.settings[k] = era.settings[k];
@@ -144,17 +158,7 @@ function upgradeWorld(W) {
     if (!p.hist) p.hist = [];
     if (p.jobSince == null && p.occId) p.jobSince = Math.max(p.born + 14, W.year - rng0(p.id) % 15);
   }
-  // spouse relationships carry the quality of each marriage
-  for (const p of Object.values(W.people)) {
-    if (!p.spouse || p.id > p.spouse || p.died != null) continue;
-    const s = W.people[p.spouse];
-    if (!s || s.died != null) continue;
-    if (!getRel(W, p.id, s.id) || getRel(W, p.id, s.id).type !== 'spouse') {
-      const since = (p.events.filter(e => e.t === 'married' || e.t === 'partnered').pop() || {}).y || W.year;
-      const compat = 100 - (Math.abs(p.traits.A - s.traits.A) + Math.abs(p.traits.O - s.traits.O)) / 2;
-      setRel(W, p.id, s.id, 'spouse', Math.round(clamp(compat * 0.6 + (p.traits.A + s.traits.A) / 8 - (p.traits.N + s.traits.N) / 10 + (rng0(p.id + s.id) % 30) - 5, 5, 95)), since, s.union === 'partners' ? 'partners' : 'married');
-    }
-  }
+  ensureSpouseRels(W);
   W.groups && Object.values(W.groups).forEach(g => { g.past = g.past || []; });
   if (!W.started) {
     // the first year should not start with nobody already expecting
@@ -229,6 +233,7 @@ function advanceYear(W) {
   W.census[W.year] = quickCensus(W, W.year);
   takeCensus(W);
   REL_INDEX = null;
+  ensureSpouseRels(W); // V12: newcomer couples get their marriage relationship straight away
   return R;
 }
 

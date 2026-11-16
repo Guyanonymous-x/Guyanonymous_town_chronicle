@@ -76,7 +76,7 @@ function renderNav() {
   const map = { person: 'people', household: 'households', group: 'groups', workplace: 'work' };
   const on = map[cur] || cur;
   $('#nav').innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === on ? 'on' : ''}">${l}</button>`).join('') +
-    `<div class="sep"></div><div class="note">V11: choose every detail of your characters, give anyone any role, and read the village journal.</div>`;
+    `<div class="sep"></div><div class="note">V12: saves open again, and couples who arrive together are married from the start.</div>`;
   $('#nav').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (b.dataset.nav === 'people') { ui.peopleFilter = {}; ui.peoplePage = 0; } if (b.dataset.nav === 'households') ui.hhMeans = null; nav.stack = []; nav.cur = null; go(b.dataset.nav); });
 }
 function render() {

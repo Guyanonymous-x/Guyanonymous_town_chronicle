@@ -1159,6 +1159,7 @@ function makerMoveIn(W, rng, y, s, R, pl) {
 
   // a home, minds, skills and work, as for other newcomers
   newHousehold(W, rng, home, y);
+  if (typeof ensureSpouseRels === 'function') ensureSpouseRels(W); // their marriage relationship, at once
   makerApplyWealth(W, P, W.households[main.household]);
   for (const q of home) addEvent(W, q, y, 'arrived', `Came to ${W.name}${q === main ? '' : ' with @' + main.id}.`, s != null ? { m: s * 3 } : null); // the family arrives together, in the first month of the season
   for (const q of home) { mindOf(q); q.skills = {}; for (const k of Object.keys(q.aptitude)) q.skills[k] = Math.round(q.aptitude[k] * 0.35 + Math.min(20, ageOf(q, y) - 10)); q.hist = []; }

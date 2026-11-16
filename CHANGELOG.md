@@ -1,5 +1,22 @@
 # Town Chronicle — Changelog
 
+## V12 — saves open again (2026-11-16)
+
+**Fixed**
+- **Opening a saved town gave an error:** "This save was made by a newer version of the app." Since V8, loading a town quietly marked it as save format 4, but the app only accepted formats up to 3, so most saves could not be opened. Saves made by V8 to V11 now open, and so do older ones.
+- **Couples who arrived together:** they didn't get their married relationship until the town was reopened, which also meant a reopened town was not quite the town that was saved. Now they get it straight away, at the end of each year and when a made person moves in.
+
+**Checked**
+- **New save and open check:** uses the real Save and Open buttons in all ten settings, alternating ordinary villages and villages of only your characters, plus an older format-3 save.
+  - Every save opened.
+  - The reopened town matched the saved one exactly (people, households, workplaces, relationships, journal, photos, attitudes, year and settings).
+  - It then ran on for another year.
+- **Every earlier check, rerun on all ten settings:**
+  - 50 years lived forward, editing and plans, person family trees and whole-family trees: 0 problems
+  - family-tree files and Excel workbooks read back (20,980 people, 4,062,604 cells): 0 differences
+  - person maker (3,000 people), moving in, and the V10 and V11 checks: 0 problems
+  - every page check in Chrome: 0 errors
+
 ## V11 — Stage 9: your own characters, roles and the village journal (2026-11-15)
 
 **Make a person: every detail from drop-down menus**
